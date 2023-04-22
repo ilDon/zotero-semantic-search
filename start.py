@@ -1,3 +1,4 @@
-from src.index import process_files
+from src.index import query_files
+from src.library_processor import LibraryProcessor
 
-process_files()
+LibraryProcessor().process_files()
