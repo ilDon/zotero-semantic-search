@@ -16,7 +16,8 @@ export const PickFolder: React.FC = () => {
   return (
     <div className="container mx-auto py-5">
       <h1 className="text-3xl mb-5">Select a folder</h1>
-      <input type="file" onChange={handleFolderChange} />
+      {/* @ts-expect-error */}
+      <input directory="" webkitdirectory="" type="file" onChange={handleFolderChange} />
     </div>
   );
 };
