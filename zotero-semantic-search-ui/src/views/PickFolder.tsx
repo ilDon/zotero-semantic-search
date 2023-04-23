@@ -1,15 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { useSearchFolder } from '../SearchFolderContext';
+import { SearchFolder } from '../modules/search-folder';
 
 export const PickFolder: React.FC = () => {
-  const { setSearchFolder } = useSearchFolder();
   const navigate = useNavigate();
 
   const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       const folderPath = files[0].webkitRelativePath.split('/').slice(0, -1).join('/');
-      setSearchFolder(folderPath);
+      SearchFolder.setSearchFolder(folderPath);
       navigate('/query');
     }
   };

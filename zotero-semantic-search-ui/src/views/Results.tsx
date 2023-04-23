@@ -1,18 +1,11 @@
+import * as React from 'react';
 import { Disclosure } from '@headlessui/react';
-import { useResults } from '../ResultsContext';
-
-// Assuming the results are passed in a prop, state, context, or local storage
-interface Result {
-  similarity: number;
-  folderId: string;
-  fileName: string;
-  sectionNumber: number;
-}
+import { Result, useResults } from '../ResultsContext';
 
 export const Results: React.FC = () => {
   const { results } = useResults();
   // Group the results by folderId
-  const groupedResults = results.reduce((acc: { [key: string]: Result[] }, result) => {
+  const groupedResults = results.reduce((acc: { [key: string]: Array<Result> }, result) => {
     if (!acc[result.folderId]) {
       acc[result.folderId] = [];
     }

@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import * as React from 'react';
 
-interface Result {
+export interface Result {
   similarity: number;
   folderId: string;
   fileName: string;
@@ -12,10 +12,10 @@ interface ResultsContextValue {
   setResults: (results: Result[]) => void;
 }
 
-const ResultsContext = createContext<ResultsContextValue | undefined>(undefined);
+const ResultsContext = React.createContext<ResultsContextValue | undefined>(undefined);
 
 export const useResults = () => {
-  const context = useContext(ResultsContext);
+  const context = React.useContext(ResultsContext);
   if (!context) {
     throw new Error('useResults must be used within a ResultsProvider');
   }
@@ -27,7 +27,7 @@ interface IResultsProviderProps {
 }
 
 export const ResultsProvider: React.FC<IResultsProviderProps> = (props: IResultsProviderProps) => {
-  const [results, setResults] = useState<Result[]>([]);
+  const [results, setResults] = React.useState<Result[]>([]);
 
   return (
     <ResultsContext.Provider value={{ results, setResults }}>

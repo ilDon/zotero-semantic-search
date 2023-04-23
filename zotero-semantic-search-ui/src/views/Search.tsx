@@ -1,15 +1,22 @@
-import { useState } from 'react';
+import * as React from 'react';
 import axios from 'axios';
-import { useSearchFolder } from '../SearchFolderContext';
 import { useNavigate } from 'react-router-dom';
 import { useResults } from '../ResultsContext';
+import { SearchFolder } from '../modules/search-folder';
+import { AppRoute } from '../modules/routing.const';
 
-export const Query: React.FC = () => {
-  const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { searchFolder } = useSearchFolder();
+export const Search: React.FC = () => {
+  const [query, setQuery] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
   const navigate = useNavigate();
   const { setResults } = useResults();
+
+  React.useEffect(() => {
+    const searchFolder = SearchFolder.getSearchFolder();
+    if (!searchFolder) {
+      navigate(AppRoute.pickFolder);
+    }
+  }, [navigate]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuery(e.target.value);
@@ -18,6 +25,7 @@ export const Query: React.FC = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const searchFolder = SearchFolder.getSearchFolder();
       const response = await axios.post('/query-files', { query, search_folder: searchFolder });
       setResults(response.data);
       navigate('/results');
