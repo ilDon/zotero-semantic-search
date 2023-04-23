@@ -23,7 +23,7 @@ class LibraryFinder:
         rows = self.fetch_database_rows()
         results = self.calculate_similarities(query_embedding, rows)
         top_results = self.get_top_results(results, 10)
-        self.display_results(top_results)
+        return top_results
 
     def get_query(self) -> str:
         return input("Enter your query: ")
@@ -48,6 +48,7 @@ class LibraryFinder:
     def get_top_results(self, results: List, n: int) -> List:
         return sorted(results, key=lambda x: x[0], reverse=True)[:n]
 
+    # @deprecated
     def display_results(self, results: List):
         for result in results:
             print(f"Folder ID: {result[1]}, File: {result[2]}, Section: {result[3]}, "
