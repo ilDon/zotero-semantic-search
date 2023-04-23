@@ -1,3 +1,4 @@
+import os
 import sqlite3
 
 _conn = None
@@ -5,12 +6,12 @@ _cursor = None
 
 class DatabaseHelper:
 
-
   @staticmethod
-  def init():
+  def init(db_folder):
     global _conn, _cursor
     if _conn is None:
-      _conn = sqlite3.connect("file_embeddings.db")
+      db_file_path = os.path.join(db_folder, "file_embeddings.db")
+      _conn = sqlite3.connect(db_file_path)
       _cursor = _conn.cursor()
   
   @staticmethod

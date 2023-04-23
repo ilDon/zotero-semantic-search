@@ -1,3 +1,4 @@
+import os
 import glob
 import PyPDF2
 import docx2txt
@@ -11,29 +12,43 @@ from src.embedder import getTextEmbedding
 
 class LibraryFinder:
 
-  def query_files():
-    DatabaseHelper.init()
-    # Query and search
-    query = input("Enter your query: ")
-    query_embedding = getTextEmbedding([query]).numpy()
+    def __init__(self, search_folder="test_files"):
+        self.search_folder = search_folder
+        db_folder = os.path.dirname(os.path.abspath(search_folder))
+        DatabaseHelper.init(db_folder=db_folder)
 
-    rows = DatabaseHelper.read("SELECT id, file_name, section_number, embedding FROM embeddings")
+    def query_files(self):
+        query = self.get_query()
+        query_embedding = self.get_query_embedding(query)
+        rows = self.fetch_database_rows()
+        results = self.calculate_similarities(query_embedding, rows)
+        top_results = self.get_top_results(results, 10)
+        self.display_results(top_results)
 
-    results = []
-    total_len = len(rows)
-    i = 0
-    for row in rows:
-        print(f'\r- Processing file: {i + 1}/{total_len}', end='')
-        folder_id, file_name, section_number, embedding = row
-        embedding = np.array([json.loads(embedding)])
-        similarity = cosine_similarity(query_embedding, embedding)[0][0]
-        results.append((similarity, folder_id, file_name, section_number))
-        i += 1
+    def get_query(self) -> str:
+        return input("Enter your query: ")
 
-    # Sort and display top 10 results
-    top_results = sorted(results, key=lambda x: x[0], reverse=True)[:10]
-    for result in top_results:
-        print(f"Folder ID: {result[1]}, File: {result[2]}, Section: {result[3]}, "
-              f"Similarity: {result[0]:.4f}")
+    def get_query_embedding(self, query: str) -> np.ndarray:
+        return getTextEmbedding([query]).numpy()
 
-    DatabaseHelper.close()
+    def fetch_database_rows(self) -> List:
+        return DatabaseHelper.read("SELECT id, file_name, section_number, embedding FROM embeddings")
+
+    def calculate_similarities(self, query_embedding: np.ndarray, rows: List) -> List:
+        results = []
+        total_len = len(rows)
+        for i, row in enumerate(rows):
+            print(f'\r- Searching file: {i + 1}/{total_len}', end='')
+            folder_id, file_name, section_number, embedding = row
+            embedding = np.array([json.loads(embedding)])
+            similarity = cosine_similarity(query_embedding, embedding)[0][0]
+            results.append((similarity, folder_id, file_name, section_number))
+        return results
+
+    def get_top_results(self, results: List, n: int) -> List:
+        return sorted(results, key=lambda x: x[0], reverse=True)[:n]
+
+    def display_results(self, results: List):
+        for result in results:
+            print(f"Folder ID: {result[1]}, File: {result[2]}, Section: {result[3]}, "
+                  f"Similarity: {result[0]:.4f}")
