@@ -6,11 +6,11 @@ import { AppRoute } from '../modules/routing.const';
 import { Api } from '../modules/api';
 
 export const Search: React.FC = () => {
-  const [query, setQuery] = React.useState('');
+  const [query, setQueryOnState] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const searchFolder = SearchFolder.getSearchFolder();
   const navigate = useNavigate();
-  const { setResults } = useResults();
+  const { setQuery, setResults } = useResults();
 
   React.useEffect(() => {
     const searchFolder = SearchFolder.getSearchFolder();
@@ -20,7 +20,7 @@ export const Search: React.FC = () => {
   }, [navigate]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setQuery(e.target.value);
+    setQueryOnState(e.target.value);
   };
 
   const handleFolderChange = () => {
@@ -31,6 +31,7 @@ export const Search: React.FC = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      setQuery(query)
       const response = await Api.query(query);
       setResults(response);
       navigate('/results');

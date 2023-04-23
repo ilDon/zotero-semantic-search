@@ -21,8 +21,7 @@ class LibraryFinder:
         query_embedding = self.get_query_embedding(query)
         rows = self.fetch_database_rows()
         results = self.calculate_similarities(query_embedding, rows)
-        top_results = self.get_top_results(results, 10)
-        return top_results
+        return results
 
     def get_query_embedding(self, query: str) -> np.ndarray:
         return getTextEmbedding([query]).numpy()
@@ -38,11 +37,14 @@ class LibraryFinder:
             folder_id, file_name, section_number, embedding = row
             embedding = np.array([json.loads(embedding)])
             similarity = cosine_similarity(query_embedding, embedding)[0][0]
-            results.append((similarity, folder_id, file_name, section_number))
+            if similarity > 0.1:
+              results.append({
+                "similarity": similarity, 
+                "folder_id": folder_id, 
+                "file_name": file_name, 
+                "section_number": section_number
+              })
         return results
-
-    def get_top_results(self, results: List, n: int) -> List:
-        return sorted(results, key=lambda x: x[0], reverse=True)[:n]
 
     # @deprecated
     def display_results(self, results: List):
