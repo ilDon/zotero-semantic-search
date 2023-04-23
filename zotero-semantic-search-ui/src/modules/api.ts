@@ -7,6 +7,11 @@ interface IQueryPayload {
   search_folder: string;
 }
 
+interface ISectionsTextPayload {
+  search_folder: string;
+  folderId: string;
+}
+
 interface IApiResponse<T> {
   data: {
     results: T;
@@ -20,6 +25,12 @@ export class Api {
   public static async query(query: string): Promise<Array<ISearchResult>> {
     const searchFolder = SearchFolder.getSearchFolder();
     const response = await axios.post<IQueryPayload, IApiResponse<Array<ISearchResult>>> (`${BASE_URL}/query`, { query, search_folder: searchFolder });
+    return response?.data?.results || [];
+  }
+  
+  public static async sectionsText(folderId: string): Promise<Array<string>> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    const response = await axios.post<ISectionsTextPayload, IApiResponse<Array<string>>> (`${BASE_URL}/pdf_sections`, { searchFolder, folderId});
     return response?.data?.results || [];
   }
 }

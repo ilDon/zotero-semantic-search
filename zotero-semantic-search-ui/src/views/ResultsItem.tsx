@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ISearchResult } from '../ResultsContext';
 import { Disclosure, Transition } from '@headlessui/react';
 import { ResultItemPreview } from './ResultItemPreview';
+import { Api } from '../modules/api';
 
 interface IResultsItemProps {
   folderId: string;
@@ -9,6 +10,16 @@ interface IResultsItemProps {
 }
 
 export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProps) => {
+  const [sectionsText, setSectionsText] = React.useState<Array<string>>([]);
+
+  React.useEffect(() => {
+    const fetchSections = async () => {
+      const sections = await Api.sectionsText(props.folderId);
+      setSectionsText(sections);
+    };
+    fetchSections();
+  }, [props.folderId]);
+
   return (
     <div className="mb-2">
       <Disclosure>
@@ -26,7 +37,7 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
         >
           <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-500">
             {props.results.map((result) => (
-              <ResultItemPreview key={result.section_number} score={result.similarity} section={result.section_number} text={""} />
+              <ResultItemPreview key={result.section_number} score={result.similarity} section={result.section_number} text={sectionsText[result.section_number]} />
             ))}
           </Disclosure.Panel>
         </Transition>
