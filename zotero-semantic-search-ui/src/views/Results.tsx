@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { ISearchResult, useResults } from '../ResultsContext';
+import { ResultsItem } from './ResultsItem';
 
 export const Results: React.FC = () => {
   const { query, results } = useResults();
@@ -19,18 +20,12 @@ export const Results: React.FC = () => {
   }, [results]);
 
   return (
-    <div className="container mx-auto py-5">
+    <div className="container mx-auto">
       <h1 className="text-3xl mb-5">Results</h1>
-      <p>{query}</p>
+      <label className="text-sm text-gray-400">Query:</label>
+      <p className="text-sm text-gray-500 mb-8">{query}</p>
       {Object.entries(resultsByFolder).map(([folderId, results]) => (
-        <div key={folderId} className="mb-5">
-          <h2 className="text-2xl mb-2">{results?.[0].file_name || folderId}</h2>
-          {results.map((result) => (
-            <div key={result.section_number} className="mb-2">
-              {result.section_number}
-            </div>
-          ))}
-        </div>
+        <ResultsItem key={folderId} folderId={folderId} results={results} />
       ))}
     </div>
   );
