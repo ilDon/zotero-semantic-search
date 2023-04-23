@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { Disclosure } from '@headlessui/react';
-import { Result, useResults } from '../ResultsContext';
+import { ISearchResult, useResults } from '../ResultsContext';
 
 export const Results: React.FC = () => {
   const { results } = useResults();
   // Group the results by folderId
-  const groupedResults = results.reduce((acc: { [key: string]: Array<Result> }, result) => {
+  const groupedResults = results.reduce((acc: { [key: string]: Array<ISearchResult> }, result) => {
     if (!acc[result.folderId]) {
       acc[result.folderId] = [];
     }

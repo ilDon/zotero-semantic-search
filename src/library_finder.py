@@ -17,16 +17,12 @@ class LibraryFinder:
         db_folder = os.path.dirname(os.path.abspath(search_folder))
         DatabaseHelper.init(db_folder=db_folder)
 
-    def query_files(self):
-        query = self.get_query()
+    def query_files(self, query: str) -> List:
         query_embedding = self.get_query_embedding(query)
         rows = self.fetch_database_rows()
         results = self.calculate_similarities(query_embedding, rows)
         top_results = self.get_top_results(results, 10)
         return top_results
-
-    def get_query(self) -> str:
-        return input("Enter your query: ")
 
     def get_query_embedding(self, query: str) -> np.ndarray:
         return getTextEmbedding([query]).numpy()

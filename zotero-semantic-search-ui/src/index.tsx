@@ -1,12 +1,10 @@
 import * as React from 'react';
-import ReactDOM from 'react-dom';
+import ReactDOM from "react-dom/client";
 import { App } from './App';
 
 import './assets/styles/tailwind.css';
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+const element = document.getElementById("root");
+const root = ReactDOM.createRoot(element!);
+root.render(<App />);
+

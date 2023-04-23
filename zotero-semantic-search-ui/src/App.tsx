@@ -10,18 +10,10 @@ export const App: React.FC = () => {
     <ResultsProvider>
       <Router>
         <Routes>
-          <Route path={AppRoute.pickFolder}>
-            <PickFolder />
-          </Route>
-          <Route path={AppRoute.search}>
-            <Search />
-          </Route>
-          <Route path={AppRoute.results}>
-            <Results />
-          </Route>
-          <Route path="*">
-            <Navigate to={AppRoute.search} />
-          </Route>
+          <Route path={AppRoute.pickFolder} element={<PickFolder />} />
+          <Route path={AppRoute.search} element={<Search />} />
+          <Route path={AppRoute.results} element={<Results />} />
+          <Route path="*" element={<Navigate to={AppRoute.search} />} />
         </Routes>
       </Router>
     </ResultsProvider>

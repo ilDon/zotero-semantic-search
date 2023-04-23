@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-export interface Result {
+export interface ISearchResult {
   similarity: number;
   folderId: string;
   fileName: string;
@@ -8,8 +8,8 @@ export interface Result {
 }
 
 interface ResultsContextValue {
-  results: Result[];
-  setResults: (results: Result[]) => void;
+  results: ISearchResult[];
+  setResults: (results: ISearchResult[]) => void;
 }
 
 const ResultsContext = React.createContext<ResultsContextValue | undefined>(undefined);
@@ -27,7 +27,7 @@ interface IResultsProviderProps {
 }
 
 export const ResultsProvider: React.FC<IResultsProviderProps> = (props: IResultsProviderProps) => {
-  const [results, setResults] = React.useState<Result[]>([]);
+  const [results, setResults] = React.useState<ISearchResult[]>([]);
 
   return (
     <ResultsContext.Provider value={{ results, setResults }}>
