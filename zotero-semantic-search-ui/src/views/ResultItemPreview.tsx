@@ -20,7 +20,7 @@ export const ResultItemPreview: React.FC<IResultItemPreviewProps> = (props: IRes
         </div>
       </div>
       <div className="pb-5 text-gray-500">
-        <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Illo impedit sapiente recusandae iusto officiis dolor? Laborum quibusdam quam, quidem vel assumenda repellat inventore sint nesciunt, ullam asperiores magnam placeat eveniet. Aliquam voluptatibus assumenda distinctio veniam quam tempora modi aperiam nemo voluptate reprehenderit quidem, nisi vero est.</p>
+        <p>{props.text}</p>
       </div>
     </div>
   </div>
