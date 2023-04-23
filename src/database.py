@@ -25,7 +25,7 @@ class DatabaseHelper:
   @staticmethod
   def read(query):
     global _conn, _cursor
-    _cursor.execute("SELECT id, file_name, section_number, embedding, text_preview FROM embeddings")
+    _cursor.execute(query)
     rows = _cursor.fetchall()
     return rows
 
@@ -34,3 +34,4 @@ class DatabaseHelper:
     global _conn
     # Close SQLite connection
     _conn.close()
+    _conn = None

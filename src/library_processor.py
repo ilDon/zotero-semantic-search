@@ -9,6 +9,7 @@ import json
 
 from src.database import DatabaseHelper
 from src.embedder import getTextEmbedding
+from src.const import MAX_SECTION_CHARS
 
 class LibraryProcessor:
 
@@ -16,7 +17,7 @@ class LibraryProcessor:
     DatabaseHelper.init()
     DatabaseHelper.write("""CREATE TABLE IF NOT EXISTS embeddings (
                   id TEXT, file_name TEXT, section_number INTEGER, 
-                  embedding BLOB, text_preview TEXT)""")
+                  embedding TEXT)""")
 
   def process_files(self):
     # Traverse through the files
@@ -35,14 +36,13 @@ class LibraryProcessor:
               #  file_text = docx2txt.process(file)
 
             # Split and truncate the contents
-            max_length = 500
-            sections = [file_text[i:i + max_length] for i in range(0, len(file_text), max_length)]
+            sections = [file_text[i:i + MAX_SECTION_CHARS] for i in range(0, len(file_text), MAX_SECTION_CHARS)]
 
             # Generate and save the embeddings
             embeddings = getTextEmbedding(sections)
             for idx, section in enumerate(sections):
                 embedding = embeddings[idx].numpy()
                 embedding_as_json_string = json.dumps(embedding.tolist())
-                DatabaseHelper.write("INSERT INTO embeddings VALUES (?, ?, ?, ?, ?)",
-                              (folder_id, file_name, idx, embedding_as_json_string, section[:50]))
+                DatabaseHelper.write("INSERT INTO embeddings VALUES (?, ?, ?, ?)",
+                              (folder_id, file_name, idx, embedding_as_json_string))
     DatabaseHelper.close()
