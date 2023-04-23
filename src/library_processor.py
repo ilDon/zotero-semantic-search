@@ -41,8 +41,6 @@ class LibraryProcessor:
                 original_stderr = os.dup(2)
                 os.dup2(devnull.fileno(), 2)
                 try:
-                    print(f"\n\nProcessing file: {pdf_file.name}\n")
-                    print(f"Folder: {folder_id}\n")
                     reader = PyPDF2.PdfReader(pdf_file)
                     if not reader.is_encrypted:  # Check if the PDF is not encrypted
                         len_pages = len(reader.pages)
@@ -96,6 +94,8 @@ class LibraryProcessor:
 
             # Check sections length is > 0 and all sections are not empty
             if len(sections) == 0 or all([len(section) == 0 for section in sections]):
+                DatabaseHelper.write("INSERT INTO excluded VALUES (?, ?)",
+                                             (folder_id, "no_text"))
                 continue
 
             embeddings = getTextEmbedding(sections)
