@@ -16,11 +16,6 @@ class LibraryProcessor:
         self.search_folder = search_folder
         db_folder = os.path.dirname(os.path.abspath(search_folder))
         DatabaseHelper.init(db_folder=db_folder)
-        DatabaseHelper.write("""CREATE TABLE IF NOT EXISTS embeddings (
-                      id TEXT, file_name TEXT, section_number INTEGER, 
-                      embedding TEXT)""")
-        DatabaseHelper.write("""CREATE TABLE IF NOT EXISTS excluded (
-                      id TEXT, reason TEXT)""")
         self.processed_folder_ids = self.get_processed_folder_ids("embeddings")
         self.excluded_folder_ids = self.get_processed_folder_ids("excluded")
 

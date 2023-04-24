@@ -8,7 +8,7 @@ interface IRResultsItemPreviewProps {
   results: Array<ISearchResult>;
 }
 
-export const ResultsItemPreview: React.FC<IRResultsItemPreviewProps> = (props: IRResultsItemPreviewProps) => {
+export const ResultsItemPreview: React.FC<IRResultsItemPreviewProps> = React.memo(function ResultsItemPreview(props: IRResultsItemPreviewProps) {
   const [sectionsText, setSectionsText] = React.useState<Array<string>>([]);
 
   React.useEffect(() => {
@@ -16,8 +16,10 @@ export const ResultsItemPreview: React.FC<IRResultsItemPreviewProps> = (props: I
       const sections = await Api.sectionsText(props.folderId);
       setSectionsText(sections);
     };
-    fetchSections();
-  }, [props.folderId]);
+    if(!sectionsText.length){
+      fetchSections();
+    }
+  }, [props.folderId, sectionsText]);
 
   return (
     <>
@@ -26,4 +28,4 @@ export const ResultsItemPreview: React.FC<IRResultsItemPreviewProps> = (props: I
       ))}
     </>
   )
-}
+});

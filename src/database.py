@@ -13,6 +13,13 @@ class DatabaseHelper:
       db_file_path = os.path.join(db_folder, "file_embeddings.db")
       _conn = sqlite3.connect(db_file_path)
       _cursor = _conn.cursor()
+      DatabaseHelper.write("""CREATE TABLE IF NOT EXISTS embeddings (
+                      id TEXT, file_name TEXT, section_number INTEGER, 
+                      embedding TEXT)""")
+      DatabaseHelper.write("""CREATE TABLE IF NOT EXISTS excluded (
+                    id TEXT, reason TEXT)""")
+      DatabaseHelper.write("""CREATE TABLE IF NOT EXISTS history (
+                    id TEXT, query TEXT, query_embedding TEXT, results TEXT)""")
   
   @staticmethod
   def write(query, params = None):

@@ -5,9 +5,12 @@ import numpy as np
 from typing import List
 from sklearn.metrics.pairwise import cosine_similarity
 import json
+import hashlib
 
 from src.database import DatabaseHelper
 from src.embedder import getTextEmbedding
+
+cached_results = None
 
 class LibraryFinder:
 
@@ -17,16 +20,25 @@ class LibraryFinder:
         DatabaseHelper.init(db_folder=db_folder)
 
     def query_files(self, query: str) -> List:
+        hash_object = hashlib.sha256(query.encode('utf-8'))
+        query_hash = hash_object.hexdigest()
         query_embedding = self.get_query_embedding(query)
         rows = self.fetch_database_rows()
         results = self.calculate_similarities(query_embedding, rows)
+        serialized_results = json.dumps(results)
+        DatabaseHelper.write("INSERT INTO history (id, query, query_embedding, results) VALUES (?, ?, ?, ?)",
+                            (query_hash, query, json.dumps(query_embedding.tolist()), serialized_results))
         return results
 
     def get_query_embedding(self, query: str) -> np.ndarray:
         return getTextEmbedding([query]).numpy()
 
     def fetch_database_rows(self) -> List:
-        return DatabaseHelper.read("SELECT id, file_name, section_number, embedding FROM embeddings")
+        global cached_results
+        if cached_results:
+            return cached_results
+        cached_results = DatabaseHelper.read("SELECT id, file_name, section_number, embedding FROM embeddings")
+        return cached_results
 
     def calculate_similarities(self, query_embedding: np.ndarray, rows: List) -> List:
         results = []
