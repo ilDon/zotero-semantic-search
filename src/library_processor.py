@@ -4,7 +4,6 @@ import PyPDF2
 import numpy as np
 from typing import List
 import json
-import resource
 
 from src.database import DatabaseHelper
 from src.embedder import getTextEmbedding
@@ -14,9 +13,6 @@ from src.pdf_parser import PdfParser
 class LibraryProcessor:
 
     def __init__(self, search_folder="test_files"):
-        soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
-        resource.setrlimit(resource.RLIMIT_NOFILE, (hard_limit, hard_limit))
-
         self.search_folder = search_folder
         db_folder = os.path.dirname(os.path.abspath(search_folder))
         DatabaseHelper.init(db_folder=db_folder)

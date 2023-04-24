@@ -1,7 +1,6 @@
 import os
 import glob
 import PyPDF2
-import docx2txt
 import numpy as np
 from typing import List
 from sklearn.metrics.pairwise import cosine_similarity
