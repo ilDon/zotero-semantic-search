@@ -5,6 +5,7 @@ from flask_cors import CORS
 from src.library_processor import LibraryProcessor
 from src.library_finder import LibraryFinder
 from src.pdf_parser import PdfParser
+from src.database import DatabaseHelper
 
 app = Flask(__name__)
 CORS(app) # Enable CORS for all routes
@@ -19,6 +20,7 @@ def process_files():
     
     processor = LibraryProcessor(search_folder=search_folder)
     processor.process_files()
+    DatabaseHelper.close()
     return jsonify({"status": "success", "message": "Files processed successfully"}), 200
 
 @app.route('/query', methods=['POST'])
@@ -32,6 +34,7 @@ def query_files():
     
     finder = LibraryFinder(search_folder=search_folder)
     results = finder.query_files(query)
+    DatabaseHelper.close()
     return jsonify({"status": "success", "results": results}), 200
 
 @app.route('/pdf_sections', methods=['POST'])
@@ -53,7 +56,6 @@ def get_pdf_sections():
         return jsonify({"error": "No PDF file found in the specified folder"}), 404
 
     sections = PdfParser.parse_pdf_by_folder(pdf_file_path, folder_id)
-
     return jsonify({"status": "success", "results": sections})
 
 if __name__ == '__main__':

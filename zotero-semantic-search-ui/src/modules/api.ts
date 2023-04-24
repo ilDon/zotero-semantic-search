@@ -36,7 +36,7 @@ export class Api {
   
   public static async sectionsText(folderId: string): Promise<Array<string>> {
     const searchFolder = SearchFolder.getSearchFolder();
-    const response = await axios.post<ISectionsTextPayload, IApiResponse<Array<string>>> (`${BASE_URL}/pdf_sections`, { searchFolder, folderId});
+    const response = await axios.post<ISectionsTextPayload, IApiResponse<Array<string>>> (`${BASE_URL}/pdf_sections`, { search_folder: searchFolder, folder_id: folderId});
     return response?.data?.results || [];
   }
 }
