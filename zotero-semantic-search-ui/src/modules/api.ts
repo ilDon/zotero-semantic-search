@@ -22,6 +22,12 @@ interface IApiResponse<T> {
 const BASE_URL = 'http://127.0.0.1:3003';
 
 export class Api {
+
+  public static async scan(): Promise<void> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    await axios.post(`${BASE_URL}/scan`, { search_folder: searchFolder });
+  }
+
   public static async query(query: string): Promise<Array<ISearchResult>> {
     const searchFolder = SearchFolder.getSearchFolder();
     const response = await axios.post<IQueryPayload, IApiResponse<Array<ISearchResult>>> (`${BASE_URL}/query`, { query, search_folder: searchFolder });

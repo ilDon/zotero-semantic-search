@@ -8,16 +8,18 @@ import { Api } from '../modules/api';
 export const Search: React.FC = () => {
   const [query, setQueryOnState] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [isScanning, setIsScanning] = React.useState(false);
   const searchFolder = SearchFolder.getSearchFolder();
   const navigate = useNavigate();
   const { setQuery, setResults } = useResults();
 
   React.useEffect(() => {
-    const searchFolder = SearchFolder.getSearchFolder();
+    console.log('React.useEffect ~ searchFolder:', searchFolder)
     if (!searchFolder) {
+      console.log('React.useEffect ~ searchFolder:', searchFolder)
       navigate(AppRoute.pickFolder);
     }
-  }, [navigate]);
+  }, [navigate, searchFolder]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQueryOnState(e.target.value);
@@ -26,6 +28,12 @@ export const Search: React.FC = () => {
   const handleFolderChange = () => {
     SearchFolder.deleteSearchFolder();
     navigate(AppRoute.pickFolder);
+  }
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    await Api.scan();
+    setIsScanning(false);
   }
 
   const handleSubmit = async () => {
@@ -53,6 +61,14 @@ export const Search: React.FC = () => {
           onClick={handleFolderChange}
         >
           Change
+        </button>
+        <button
+          type="button"
+          className="rounded-md ml-2 bg-indigo-600 disabled:bg-indigo-500 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          disabled={isScanning}
+          onClick={handleScan}
+        >
+          Scan
         </button>
       </div>
       <label htmlFor="about" className="block text-sm font-medium leading-6 text-gray-900">
