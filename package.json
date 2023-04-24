@@ -9,7 +9,8 @@
   "scripts": {
     "start-api": "python3 server.py",
     "start-app": "cd zotero-semantic-search-ui && yarn start",
-    "start": "concurrently \"yarn start-api\" \"yarn start-app\""
+    "start": "concurrently \"yarn start-api\" \"yarn start-app\"",
+    "setup": "cd zotero-semantic-search-ui && yarn install"
   },
   "devDependencies": {
     "concurrently": "^8.0.1"
