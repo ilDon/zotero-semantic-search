@@ -1,12 +1,12 @@
 import * as React from 'react';
 
-interface IResultItemPreviewProps {
+interface IResultItemPreviewItemProps {
   score: number;
   section: number;
   text: string;
 }
 
-export const ResultItemPreview: React.FC<IResultItemPreviewProps> = (props: IResultItemPreviewProps) => (
+export const ResultItemPreviewItem: React.FC<IResultItemPreviewItemProps> = (props: IResultItemPreviewItemProps) => (
   <div className="overflow-hidden bg-white">
     <div className="">
       <div className="flex space-x-3">
