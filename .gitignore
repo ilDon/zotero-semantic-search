@@ -3,3 +3,4 @@ test_files/
 src/__pycache__/
 file_embeddings.db
 node_modules/
+LEALLA/
