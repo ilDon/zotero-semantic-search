@@ -43,3 +43,7 @@ class DatabaseHelper:
     # Close SQLite connection
     _conn.close()
     _conn = None
+
+  @staticmethod
+  def drop_table(table_name):
+    DatabaseHelper.write(f"DROP TABLE {table_name}")

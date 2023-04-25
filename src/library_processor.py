@@ -26,10 +26,13 @@ class LibraryProcessor:
             folder_ids.add(row[0])
         return folder_ids
 
-    def save_embeddings(self, folder_id: str, file_name: str, sections: List[str], embeddings: np.ndarray):
+    def save_embeddings(self, folder_id: str, file_name: str, sections: List[str]):
+        total_len = len(sections)
         for idx, section in enumerate(sections):
-            embedding = embeddings[idx].numpy()
-            embedding_as_json_string = json.dumps(embedding.tolist())
+            print(f'\r  - Processing section: {idx + 1}/{total_len}', end='')
+            embeddings = getTextEmbedding([section])
+            embedding = embeddings.numpy()
+            embedding_as_json_string = json.dumps(embedding.tolist()[0])
             DatabaseHelper.write("INSERT INTO embeddings VALUES (?, ?, ?, ?)",
                                  (folder_id, file_name, idx, embedding_as_json_string))
 
@@ -49,7 +52,7 @@ class LibraryProcessor:
         # Process the list of PDF files
         total_len = len(pdf_files)
         for i, (folder, file) in enumerate(pdf_files):
-            print(f'\r- Processing file: {i + 1}/{total_len}', end='')
+            print(f'\n- Processing file: {i + 1}/{total_len} - {file}\n', end='')
 
             folder_id = os.path.basename(folder)
             file_name = os.path.basename(file)
@@ -60,7 +63,6 @@ class LibraryProcessor:
                 DatabaseHelper.write("INSERT INTO excluded VALUES (?, ?)", (folder_id, "no_text"))
                 continue
 
-            embeddings = getTextEmbedding(sections)
-            self.save_embeddings(folder_id, file_name, sections, embeddings)
+            self.save_embeddings(folder_id, file_name, sections)
 
         
