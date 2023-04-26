@@ -1,5 +1,6 @@
 import os
 import PyPDF2
+import glob
 from typing import List
 from datetime import date
 
@@ -43,3 +44,14 @@ class PdfParser:
   @staticmethod
   def split_and_truncate(text: str) -> List[str]:
       return [text[i:i + MAX_SECTION_CHARS] for i in range(0, len(text), MAX_SECTION_CHARS)]
+
+  @staticmethod
+  def get_pdf_file_path_from_folder_id(search_folder: str, folder_id: str) -> str:
+      pdf_file_path = None
+      folder_blob = f"{search_folder}/{folder_id}/*"
+      for file in glob.glob(folder_blob):
+          if file.endswith(".pdf"):
+              pdf_file_path = file
+              break
+
+      return pdf_file_path

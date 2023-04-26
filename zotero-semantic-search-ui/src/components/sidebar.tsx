@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { AppRoute } from '../modules/routing.const';
-import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ClockIcon, ArchiveBoxXMarkIcon } from '@heroicons/react/24/outline';
 import { useLocation, useNavigate } from 'react-router-dom'
 
 
@@ -14,7 +14,8 @@ export const Sidebar: React.FC = () => {
 
   const navigationData = [
     { name: 'Search', destination: AppRoute.search, icon: MagnifyingGlassIcon, current: location.pathname === AppRoute.search || location.pathname.startsWith(AppRoute.results.replace(':id', '')) },
-    { name: 'History', destination: AppRoute.history, icon: ClockIcon, current: location.pathname === AppRoute.history }
+    { name: 'History', destination: AppRoute.history, icon: ClockIcon, current: location.pathname === AppRoute.history },
+    { name: 'Excluded', destination: AppRoute.excluded, icon: ArchiveBoxXMarkIcon, current: location.pathname === AppRoute.excluded }
   ]
 
   return (

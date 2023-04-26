@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { Bars3Icon } from '@heroicons/react/24/outline'
 import { Sidebar } from './components/sidebar';
 import { SidebarMobileContainer } from './components/sidebar-mobile-container';
+import { Excluded } from './views/excluded';
 
 export const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -42,6 +43,7 @@ export const App: React.FC = () => {
                 <Route path={AppRoute.search} element={<Search />} />
                 <Route path={AppRoute.results} element={<Results />} />
                 <Route path={AppRoute.history} element={<History />} />
+                <Route path={AppRoute.excluded} element={<Excluded />} />
                 <Route path="*" element={<Navigate to={AppRoute.search} />} />
               </Routes>
             </div>

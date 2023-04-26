@@ -1,7 +1,7 @@
 import subprocess, os, platform
-import glob
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from datetime import date
 
 from src.library_processor import LibraryProcessor
 from src.library_finder import LibraryFinder
@@ -47,12 +47,7 @@ def get_pdf_sections():
     if not search_folder or not folder_id:
         return jsonify({"error": "search_folder and folder_id parameters are required"}), 400
 
-    pdf_file_path = None
-    folder_blob = f"{search_folder}/{folder_id}/*"
-    for file in glob.glob(folder_blob):
-        if file.endswith(".pdf"):
-            pdf_file_path = file
-            break
+    pdf_file_path = PdfParser.get_pdf_file_path_from_folder_id(search_folder, folder_id)
 
     if not pdf_file_path:
         return jsonify({"error": f"No PDF file found in {folder_blob}"}), 404
@@ -69,12 +64,7 @@ def open_file():
     if not search_folder or not folder_id:
         return jsonify({"error": "search_folder and folder_id parameters are required"}), 400
     
-    pdf_file_path = None
-    folder_blob = f"{search_folder}/{folder_id}/*"
-    for file in glob.glob(folder_blob):
-        if file.endswith(".pdf"):
-            pdf_file_path = file
-            break
+    pdf_file_path = PdfParser.get_pdf_file_path_from_folder_id(search_folder, folder_id)
 
     if not pdf_file_path:
         return jsonify({"error": f"No PDF file found in {folder_blob}"}), 404
@@ -158,6 +148,68 @@ def delete_history():
     DatabaseHelper.write("DELETE FROM history WHERE id = ?", (id,))
     DatabaseHelper.close()
     return jsonify({"status": "success", "message": "History item deleted successfully"}), 200
+
+@app.route('/get_excluded', methods=['POST', 'OPTIONS'])
+def get_excluded():
+      
+      if request.method == 'OPTIONS':
+          return jsonify({"status": "success"}), 200
+      
+      data = request.get_json()
+      search_folder = data.get('search_folder')
+      
+      if not search_folder:
+          return jsonify({"error": "search_folder parameter is required"}), 400
+      
+      db_folder = os.path.dirname(os.path.abspath(search_folder))
+      DatabaseHelper.init(db_folder=db_folder)
+      rows = DatabaseHelper.read("SELECT id, reason, date FROM excluded ORDER BY date DESC")
+      DatabaseHelper.close()
+  
+      results = []
+      for row in rows:
+          result = {
+              "id": row[0],
+              "reason": row[1],
+              "date": row[2],
+              "file_name": PdfParser.get_pdf_file_path_from_folder_id(search_folder, row[0])
+          }
+          results.append(result)
+  
+      return jsonify({"status": "success", "results": results}), 200
+
+@app.route('/add_excluded', methods=['POST'])
+def add_excluded():
+    data = request.get_json()
+    search_folder = data.get('search_folder')
+    id = data.get('folder_id')
+    reason = data.get('reason')
+    
+    if not search_folder or not id or not reason:
+        return jsonify({"error": "search_folder, id and reason parameters are required"}), 400
+
+    db_folder = os.path.dirname(os.path.abspath(search_folder))
+    DatabaseHelper.init(db_folder=db_folder)
+    today = date.today().strftime("%Y-%m-%d")
+    DatabaseHelper.write("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (id, reason, today))
+    DatabaseHelper.write("DELETE FROM embeddings WHERE id = ?", (id,))
+    DatabaseHelper.close()
+    return jsonify({"status": "success", "message": "Excluded item added successfully"}), 200
+
+@app.route('/delete_excluded', methods=['POST'])
+def delete_excluded():
+    data = request.get_json()
+    search_folder = data.get('search_folder')
+    id = data.get('folder_id')
+    
+    if not search_folder or not id:
+        return jsonify({"error": "search_folder and id parameters are required"}), 400
+
+    db_folder = os.path.dirname(os.path.abspath(search_folder))
+    DatabaseHelper.init(db_folder=db_folder)
+    DatabaseHelper.write("DELETE FROM excluded WHERE id = ?", (id,))
+    DatabaseHelper.close()
+    return jsonify({"status": "success", "message": "Excluded item deleted successfully"}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3003, debug=True)

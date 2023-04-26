@@ -3,4 +3,5 @@ export enum AppRoute {
   search = '/search',
   results = '/results/:id',
   history = '/history',
+  excluded = '/excluded',
 }

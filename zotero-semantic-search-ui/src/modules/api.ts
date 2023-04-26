@@ -40,6 +40,13 @@ export interface IHistoryItem {
   date: string;
 }
 
+export interface IExcludedFolder {
+  id: string;
+  reason: 'encrypted' | 'no_text' | 'manual';
+  date: string
+  file_name: string;
+}
+
 const BASE_URL = 'http://127.0.0.1:3003';
 
 export class Api {
@@ -90,6 +97,22 @@ export class Api {
   public static async deleteHistoryElement(id: string): Promise<void> {
     const searchFolder = SearchFolder.getSearchFolder();
     await axios.post(`${BASE_URL}/delete_history_element`, { search_folder: searchFolder, id });
+  }
+
+  public static async getExcluded(): Promise<Array<IExcludedFolder>> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    const response = await axios.post<IBasePayload, IApiResponse<Array<IExcludedFolder>>>(`${BASE_URL}/get_excluded`, { search_folder: searchFolder });
+    return response?.data?.results || [];
+  }
+
+  public static async addExcluded(folderId: string, reason: IExcludedFolder['reason']): Promise<void> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    await axios.post(`${BASE_URL}/add_excluded`, { search_folder: searchFolder, folder_id: folderId, reason });
+  }
+
+  public static async deleteExcluded(folderId: string): Promise<void> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    await axios.post(`${BASE_URL}/delete_excluded`, { search_folder: searchFolder, folder_id: folderId });
   }
 
 }
