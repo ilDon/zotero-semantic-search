@@ -10,7 +10,7 @@ interface IResultItemPreviewItemProps {
 
 export const ResultItemPreviewItem: React.FC<IResultItemPreviewItemProps> = (props: IResultItemPreviewItemProps) => {
   const handleOpenFile = () => {
-    Api.openFile(props.folderId);
+    new Api().openFile(props.folderId);
   };
   return (
   <div className="overflow-hidden bg-white">

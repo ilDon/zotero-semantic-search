@@ -7,7 +7,7 @@ export const Excluded: React.FC = () => {
   const [excluded, setExcluded] = React.useState<Array<IExcludedFolder> | null>(null);
 
   const fetchExcluded = async () => {
-    const response = await Api.getExcluded();
+    const response = await new Api().getExcluded();
     setExcluded(response);
   };
 
@@ -16,7 +16,7 @@ export const Excluded: React.FC = () => {
   }, []);
 
   const handleDeleteExcluded = async (id: string) => {
-    await Api.deleteExcluded(id);
+    await new Api().deleteExcluded(id);
     setExcluded(excluded!.filter((excluded) => excluded.id !== id));
   };
 

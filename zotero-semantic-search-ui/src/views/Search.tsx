@@ -31,7 +31,7 @@ export const Search: React.FC = () => {
 
   const handleScan = async () => {
     setIsScanning(true);
-    await Api.scan();
+    await new Api().scan();
     setIsScanning(false);
   }
 
@@ -39,7 +39,7 @@ export const Search: React.FC = () => {
     setLoading(true);
     try {
       setQuery(query)
-      const response = await Api.query(query);
+      const response = await new Api().query(query);
       setResults(response.results);
       navigate(Routing.getRoute(AppRoute.results, { id: response.id }));
     } catch (error) {

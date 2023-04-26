@@ -4,16 +4,19 @@ import { ResultsItem } from './ResultsItem';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Api } from '../modules/api';
 import { AppRoute } from '../modules/routing.const';
+import { usePdfText } from '../providers/pdf-text-provider';
 
 export const Results: React.FC = () => {
   const { setQuery, setResults, query, results } = useResults();
+  const { addIds } = usePdfText();
+
   const navigate = useNavigate();
 
   const id = useParams()?.id;
   
   React.useEffect(() => {
     const fetchResult = async () => {
-      const response = await Api.fetchHistoryElement(id!);
+      const response = await new Api().fetchHistoryElement(id!);
       if (response) {
         setQuery(response.query);
         setResults(response.results);
@@ -26,8 +29,20 @@ export const Results: React.FC = () => {
       fetchResult();
     }
   }, [id, query, results, setQuery, setResults, navigate]);
-
+  
   const sortedResult = React.useMemo(() => results.sort((a, b) => b.similarity - a.similarity), [results]);
+
+  
+  React.useEffect(() => {
+    setTimeout(() => {
+      const allIds = sortedResult
+      .map((result) => result.folder_id)
+      .filter((value, index, self) => self.indexOf(value) === index);
+    
+      addIds(allIds);
+    }, 1000);
+  }, [sortedResult, addIds]);
+
 
   if (!id) {
     return (
@@ -43,6 +58,7 @@ export const Results: React.FC = () => {
       </div>
     );
   }
+
 
   return (
     <div className="container mx-auto">

@@ -18,7 +18,7 @@ export const ExcludedAdd: React.FC<IExcludedAddProps> = (props) => {
   
   const handleFormSubmit = async () => {
     setIsRemoving(true);
-    await Api.addExcluded(folderId, reason);
+    await new Api().addExcluded(folderId, reason);
     props.onAdd();
     setIsRemoving(false);
     onCancel();

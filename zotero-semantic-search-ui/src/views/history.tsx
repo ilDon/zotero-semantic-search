@@ -12,7 +12,7 @@ export const History: React.FC = () => {
   
   React.useEffect(() => {
     const fetchHistory = async () => {
-      const response = await Api.history();
+      const response = await new Api().history();
       setHistories(response);
     };
     fetchHistory();
@@ -25,7 +25,7 @@ export const History: React.FC = () => {
   }, [navigate, searchFolder]);
 
   const handleDeleteHistory = async (id: string) => {
-    await Api.deleteHistoryElement(id);
+    await new Api().deleteHistoryElement(id);
     setHistories(histories!.filter((history) => history.id !== id));
   };
 
