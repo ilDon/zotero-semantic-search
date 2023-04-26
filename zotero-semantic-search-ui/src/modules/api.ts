@@ -61,6 +61,11 @@ export class Api {
     return response?.data?.results || [];
   }
 
+  public static async openFile(folderId: string): Promise<void> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    await axios.post<ISectionsTextPayload>(`${BASE_URL}/open_file`, { search_folder: searchFolder, folder_id: folderId });
+  }
+
   public static async history(): Promise<Array<IHistoryItem>> {
     const searchFolder = SearchFolder.getSearchFolder();
     const response = await axios.post<IBasePayload, IApiResponse<Array<IHistoryItem>>> (`${BASE_URL}/get_history`, { search_folder: searchFolder });

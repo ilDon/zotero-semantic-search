@@ -31,6 +31,12 @@ export const ResultsItemPreview: React.FC<IRResultsItemPreviewProps> = React.mem
   }
 
   return (
-    <ResultItemPreviewItem key={props.result.section_number} score={props.result.similarity} section={props.result.section_number} text={sectionsText[props.result.section_number]} />
+    <ResultItemPreviewItem
+      key={props.result.section_number}
+      folderId={props.folderId}
+      score={props.result.similarity}
+      section={props.result.section_number}
+      text={sectionsText[props.result.section_number]}
+    />
   )
 });

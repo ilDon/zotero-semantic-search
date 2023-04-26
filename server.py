@@ -1,4 +1,4 @@
-import os
+import subprocess, os, platform
 import glob
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -59,6 +59,35 @@ def get_pdf_sections():
 
     sections = PdfParser.parse_pdf_by_folder(pdf_file_path, folder_id)
     return jsonify({"status": "success", "results": sections})
+
+@app.route('/open_file', methods=['POST'])
+def open_file():
+    data = request.get_json()
+    search_folder = data.get('search_folder')
+    folder_id = data.get('folder_id')
+    
+    if not search_folder or not folder_id:
+        return jsonify({"error": "search_folder and folder_id parameters are required"}), 400
+    
+    pdf_file_path = None
+    folder_blob = f"{search_folder}/{folder_id}/*"
+    for file in glob.glob(folder_blob):
+        if file.endswith(".pdf"):
+            pdf_file_path = file
+            break
+
+    if not pdf_file_path:
+        return jsonify({"error": f"No PDF file found in {folder_blob}"}), 404
+
+    if platform.system() == 'Darwin':       # macOS
+        subprocess.call(('open', pdf_file_path))
+    elif platform.system() == 'Windows':    # Windows
+        os.startfile(pdf_file_path)
+    else:                                   # linux variants
+        subprocess.call(('xdg-open', pdf_file_path))
+
+    return jsonify({"status": "success", "message": "File opened successfully"}), 200
+
 
 @app.route('/get_history', methods=['POST', 'OPTIONS'])
 def get_history():
