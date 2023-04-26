@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ISearchResult, useResults } from '../ResultsContext';
+import { useResults } from '../ResultsContext';
 import { Api, IHistoryItem } from '../modules/api';
 import { useNavigate } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
