@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ISearchResult } from '../ResultsContext';
 import { Disclosure, Transition } from '@headlessui/react';
 import { ResultsItemPreview } from './ResultsItemPreview';
+import { FileNameWithId } from '../components/file-name-with-id';
 
 interface IResultsItemProps {
   folderId: string;
@@ -12,7 +13,10 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
   <div className="mb-2">
     <Disclosure>
       <Disclosure.Button className="flex w-full justify-between rounded-lg bg-purple-100 px-4 py-2 text-left text-sm font-medium text-purple-900 hover:bg-purple-200 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75">
-        {props.result?.file_name.replace('.pdf', '') || props.folderId}
+        <FileNameWithId
+          fileName={props.result?.file_name}
+          id={props.folderId}
+        />
       </Disclosure.Button>
 
       <Transition

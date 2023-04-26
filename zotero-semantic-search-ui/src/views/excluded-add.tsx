@@ -7,17 +7,23 @@ interface IExcludedAddProps {
 }
 
 export const ExcludedAdd: React.FC<IExcludedAddProps> = (props) => {
+  const [isRemoving, setIsRemoving] = React.useState<boolean>(false);
   const [folderId, setFolderId] = React.useState<string>('');
   const [reason, setReason] = React.useState<IExcludedFolder['reason']>('manual');
-  const handleFormSubmit = async () => {
-    await Api.addExcluded(folderId, reason);
-    props.onAdd();
-  };
-
+  
   const onCancel = () => {
     setFolderId('');
     setReason('manual');
   };
+  
+  const handleFormSubmit = async () => {
+    setIsRemoving(true);
+    await Api.addExcluded(folderId, reason);
+    props.onAdd();
+    setIsRemoving(false);
+    onCancel();
+  };
+
 
   return (
     <div className="mb-2">
@@ -83,7 +89,8 @@ export const ExcludedAdd: React.FC<IExcludedAddProps> = (props) => {
               <button
                 type="button"
                 onClick={handleFormSubmit}
-                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                disabled={isRemoving}
+                className="rounded-md bg-indigo-600 disabled:bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
               >
                 Save
               </button>

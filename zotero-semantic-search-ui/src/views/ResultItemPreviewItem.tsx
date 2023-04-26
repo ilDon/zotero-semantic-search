@@ -20,7 +20,7 @@ export const ResultItemPreviewItem: React.FC<IResultItemPreviewItemProps> = (pro
           <p className="text-sm font-semibold text-gray-900">
             Score: {props.score}
             <span className="ml-2 text-sm text-gray-500">
-              Section: {props.section}
+              Section: {props.section} - {props.folderId}
             </span>
           </p>
         </div>
