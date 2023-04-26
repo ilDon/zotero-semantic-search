@@ -15,9 +15,7 @@ export const Search: React.FC = () => {
   const { setQuery, setResults } = useResults();
 
   React.useEffect(() => {
-    console.log('React.useEffect ~ searchFolder:', searchFolder)
     if (!searchFolder) {
-      console.log('React.useEffect ~ searchFolder:', searchFolder)
       navigate(AppRoute.pickFolder);
     }
   }, [navigate, searchFolder]);

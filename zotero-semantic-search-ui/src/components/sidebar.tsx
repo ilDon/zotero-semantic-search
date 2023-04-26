@@ -12,7 +12,6 @@ export const Sidebar: React.FC = () => {
   const location = useLocation()
   const navigation = useNavigate()
 
-  console.log('location:', location)
   const navigationData = [
     { name: 'Search', destination: AppRoute.search, icon: MagnifyingGlassIcon, current: location.pathname === AppRoute.search || location.pathname.startsWith(AppRoute.results.replace(':id', '')) },
     { name: 'History', destination: AppRoute.history, icon: ClockIcon, current: location.pathname === AppRoute.history }
