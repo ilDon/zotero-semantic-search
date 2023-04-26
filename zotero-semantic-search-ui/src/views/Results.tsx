@@ -14,7 +14,6 @@ export const Results: React.FC = () => {
   React.useEffect(() => {
     const fetchResult = async () => {
       const response = await Api.fetchHistoryElement(id!);
-      console.log('fetchResult ~ response:', response)
       if (response) {
         setQuery(response.query);
         setResults(response.results);

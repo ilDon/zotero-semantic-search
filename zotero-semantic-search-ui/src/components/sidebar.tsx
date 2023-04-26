@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { AppRoute } from '../modules/routing.const';
 import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 
 function classNames(...classes: any) {
@@ -10,10 +10,14 @@ function classNames(...classes: any) {
 
 export const Sidebar: React.FC = () => {
   const location = useLocation()
-  const navigation = [
-    { name: 'Search', href: AppRoute.search, icon: MagnifyingGlassIcon, current: location.pathname === AppRoute.search },
-    { name: 'History', href: AppRoute.history, icon: ClockIcon, current: location.pathname === AppRoute.results }
+  const navigation = useNavigate()
+
+  console.log('location:', location)
+  const navigationData = [
+    { name: 'Search', destination: AppRoute.search, icon: MagnifyingGlassIcon, current: location.pathname === AppRoute.search || location.pathname.startsWith(AppRoute.results.replace(':id', '')) },
+    { name: 'History', destination: AppRoute.history, icon: ClockIcon, current: location.pathname === AppRoute.history }
   ]
+
   return (
     <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6">
       <div className="flex h-16 shrink-0 items-center text-gray-400">
@@ -23,20 +27,21 @@ export const Sidebar: React.FC = () => {
         <ul className="flex flex-1 flex-col gap-y-7">
           <li>
             <ul className="-mx-2 space-y-1">
-              {navigation.map((item) => (
+              {navigationData.map((item) => (
                 <li key={item.name}>
-                  <a
-                    href={item.href}
+                  <button
+                    type="button"
+                    onClick={() => navigation(item.destination)}
                     className={classNames(
                       item.current
                         ? 'bg-gray-800 text-white'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800',
-                      'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold'
+                      'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold w-full'
                     )}
                   >
                     <item.icon className="h-6 w-6 shrink-0" aria-hidden="true" />
                     {item.name}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>

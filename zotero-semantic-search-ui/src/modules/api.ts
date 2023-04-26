@@ -81,7 +81,6 @@ export class Api {
     const searchFolder = SearchFolder.getSearchFolder();
     const response = await axios.post<IHistoryItemPayload, IApiResponse<IHistoryItem>>(`${BASE_URL}/fetch_history_element`, { search_folder: searchFolder, id });
     const item = response?.data?.results;
-    console.log('fetchHistoryElement ~ response:', response)
     if (item) {
       item.results = JSON.parse(item.results as any);
     }
