@@ -1,3 +1,4 @@
+import os
 import glob
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -70,10 +71,22 @@ def get_history():
     if not search_folder:
         return jsonify({"error": "search_folder parameter is required"}), 400
     
-    DatabaseHelper.init(db_folder=search_folder)
-    rows = DatabaseHelper.read("SELECT * FROM history")
+    db_folder = os.path.dirname(os.path.abspath(search_folder))
+    DatabaseHelper.init(db_folder=db_folder)
+    rows = DatabaseHelper.read("SELECT id, query, results, date FROM history")
     DatabaseHelper.close()
-    return jsonify({"status": "success", "results": rows}), 200
+
+    results = []
+    for row in rows:
+        result = {
+            "id": row[0],
+            "query": row[1],
+            "results": row[2],
+            "date": row[3]
+        }
+        results.append(result)
+
+    return jsonify({"status": "success", "results": results}), 200
 
 @app.route('/delete_history_element', methods=['POST'])
 def delete_history():
@@ -84,7 +97,8 @@ def delete_history():
     if not search_folder or not id:
         return jsonify({"error": "search_folder and id parameters are required"}), 400
 
-    DatabaseHelper.init(db_folder=search_folder)
+    db_folder = os.path.dirname(os.path.abspath(search_folder))
+    DatabaseHelper.init(db_folder=db_folder)
     DatabaseHelper.write("DELETE FROM history WHERE id = ?", (id,))
     DatabaseHelper.close()
     return jsonify({"status": "success", "message": "History item deleted successfully"}), 200

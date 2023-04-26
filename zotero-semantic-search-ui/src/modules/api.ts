@@ -23,8 +23,9 @@ interface IApiResponse<T> {
 
 export interface IHistoryItem {
   id: string;
-  results: Array<ISearchResult>;
   query: string;
+  results: Array<ISearchResult>;
+  date: string;
 }
 
 const BASE_URL = 'http://127.0.0.1:3003';
@@ -51,6 +52,11 @@ export class Api {
   public static async history(): Promise<Array<IHistoryItem>> {
     const searchFolder = SearchFolder.getSearchFolder();
     const response = await axios.post<IBasePayload, IApiResponse<Array<IHistoryItem>>> (`${BASE_URL}/get_history`, { search_folder: searchFolder });
+    if (response?.data?.results?.length) {
+      response.data.results.forEach((item: IHistoryItem) => {
+        item.results = JSON.parse(item.results as any);
+      });
+    }
     return response?.data?.results || [];
   }
 

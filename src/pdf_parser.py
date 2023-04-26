@@ -1,6 +1,7 @@
 import os
 import PyPDF2
 from typing import List
+from datetime import date
 
 from src.database import DatabaseHelper
 from src.const import MAX_SECTION_CHARS
@@ -28,8 +29,8 @@ class PdfParser:
                             file_text += reader.pages[page].extract_text()
                     else:
                         # add to excluded in DB
-                        DatabaseHelper.write("INSERT INTO excluded VALUES (?, ?)",
-                                             (folder_id, "encrypted"))
+                        today = date.today().strftime("%Y-%m-%d")
+                        DatabaseHelper.write("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (folder_id, "encrypted", date))
                         print(f"\n\nSkipping encrypted file: {pdf_file.name}\n")
                 finally:
                     reader = None

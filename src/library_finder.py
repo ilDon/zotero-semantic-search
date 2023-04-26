@@ -6,6 +6,7 @@ from typing import List
 from sklearn.metrics.pairwise import cosine_similarity
 import json
 import hashlib
+from datetime import date
 
 from src.database import DatabaseHelper
 from src.embedder import getTextEmbedding
@@ -26,8 +27,9 @@ class LibraryFinder:
         rows = self.fetch_database_rows()
         results = self.calculate_similarities(query_embedding, rows)
         serialized_results = json.dumps(results)
-        DatabaseHelper.write("INSERT INTO history (id, query, query_embedding, results) VALUES (?, ?, ?, ?)",
-                            (query_hash, query, json.dumps(query_embedding.tolist()), serialized_results))
+        today = date.today().strftime("%Y-%m-%d")
+        DatabaseHelper.write("INSERT INTO history (id, query, query_embedding, results, date) VALUES (?, ?, ?, ?, ?)",
+                            (query_hash, query, json.dumps(query_embedding.tolist()), serialized_results, today))
         return results
 
     def get_query_embedding(self, query: str) -> np.ndarray:
@@ -53,7 +55,7 @@ class LibraryFinder:
                 continue
             
             similarity = cosine_similarity(query_embedding, embedding)[0][0]
-            if similarity > 0.1:
+            if similarity > 0.6:
               results.append({
                 "similarity": similarity, 
                 "folder_id": folder_id, 

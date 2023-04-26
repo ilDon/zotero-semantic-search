@@ -4,6 +4,7 @@ import PyPDF2
 import numpy as np
 from typing import List
 import json
+from datetime import date
 
 from src.database import DatabaseHelper
 from src.embedder import getTextEmbedding
@@ -33,8 +34,9 @@ class LibraryProcessor:
             embeddings = getTextEmbedding([section])
             embedding = embeddings.numpy()
             embedding_as_json_string = json.dumps(embedding.tolist()[0])
-            DatabaseHelper.write("INSERT INTO embeddings VALUES (?, ?, ?, ?)",
-                                 (folder_id, file_name, idx, embedding_as_json_string))
+            today = date.today().strftime("%Y-%m-%d")
+            DatabaseHelper.write("INSERT INTO embeddings (id, file_name, section_number, embedding, date) VALUES (?, ?, ?, ?, ?)",
+                                 (folder_id, file_name, idx, embedding_as_json_string, today))
 
     def process_files(self):
         path_to_scan = f"{self.search_folder}/*"
@@ -60,7 +62,8 @@ class LibraryProcessor:
 
             # Check sections length is > 0 and all sections are not empty
             if len(sections) == 0 or all([len(section) == 0 for section in sections]):
-                DatabaseHelper.write("INSERT INTO excluded VALUES (?, ?)", (folder_id, "no_text"))
+                today = date.today().strftime("%Y-%m-%d")
+                DatabaseHelper.write("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (folder_id, "no_text", today))
                 continue
 
             self.save_embeddings(folder_id, file_name, sections)
