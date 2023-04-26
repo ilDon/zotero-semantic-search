@@ -1,10 +1,15 @@
 import * as React from 'react';
 import { Api, IHistoryItem } from '../modules/api';
 import { HistoryItem } from './history-item';
+import { useNavigate } from 'react-router-dom';
+import { AppRoute } from '../modules/routing.const';
+import { SearchFolder } from '../modules/search-folder';
 
 export const History: React.FC = () => {
   const [histories, setHistories] = React.useState<Array<IHistoryItem> | null>(null);
-
+  const searchFolder = SearchFolder.getSearchFolder();
+  const navigate = useNavigate();
+  
   React.useEffect(() => {
     const fetchHistory = async () => {
       const response = await Api.history();
@@ -12,6 +17,12 @@ export const History: React.FC = () => {
     };
     fetchHistory();
   }, []);
+
+  React.useEffect(() => {
+    if (!searchFolder) {
+      navigate(AppRoute.pickFolder);
+    }
+  }, [navigate, searchFolder]);
 
   const handleDeleteHistory = async (id: string) => {
     await Api.deleteHistoryElement(id);
