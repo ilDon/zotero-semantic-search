@@ -63,9 +63,3 @@ class LibraryFinder:
                 "section_number": section_number
               })
         return results
-
-    # @deprecated
-    def display_results(self, results: List):
-        for result in results:
-            print(f"Folder ID: {result[1]}, File: {result[2]}, Section: {result[3]}, "
-                  f"Similarity: {result[0]:.4f}")
