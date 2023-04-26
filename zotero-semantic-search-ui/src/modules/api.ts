@@ -2,13 +2,15 @@ import axios from 'axios';
 import { SearchFolder } from './search-folder';
 import { ISearchResult } from '../ResultsContext';
 
-interface IQueryPayload {
-  query: string;
+interface IBasePayload {
   search_folder: string;
 }
 
-interface ISectionsTextPayload {
-  search_folder: string;
+interface IQueryPayload extends IBasePayload {
+  query: string;
+}
+
+interface ISectionsTextPayload extends IBasePayload {
   folderId: string;
 }
 
@@ -17,6 +19,12 @@ interface IApiResponse<T> {
     results: T;
     status: "success"
   }
+}
+
+export interface IHistoryItem {
+  id: string;
+  results: Array<ISearchResult>;
+  query: string;
 }
 
 const BASE_URL = 'http://127.0.0.1:3003';
@@ -39,4 +47,16 @@ export class Api {
     const response = await axios.post<ISectionsTextPayload, IApiResponse<Array<string>>> (`${BASE_URL}/pdf_sections`, { search_folder: searchFolder, folder_id: folderId});
     return response?.data?.results || [];
   }
+
+  public static async history(): Promise<Array<IHistoryItem>> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    const response = await axios.post<IBasePayload, IApiResponse<Array<IHistoryItem>>> (`${BASE_URL}/get_history`, { search_folder: searchFolder });
+    return response?.data?.results || [];
+  }
+
+  public static async deleteHistoryElement(id: string): Promise<void> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    await axios.post(`${BASE_URL}/delete_history_element`, { search_folder: searchFolder, id });
+  }
+
 }

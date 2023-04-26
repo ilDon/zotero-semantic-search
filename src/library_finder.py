@@ -47,6 +47,11 @@ class LibraryFinder:
             print(f'\r- Searching file: {i + 1}/{total_len}', end='')
             folder_id, file_name, section_number, embedding = row
             embedding = np.array([json.loads(embedding)])
+            
+            if embedding.shape != query_embedding.shape:
+                print(f"ERROR: Embedding shape mismatch for {file_name} section {section_number}")
+                continue
+            
             similarity = cosine_similarity(query_embedding, embedding)[0][0]
             if similarity > 0.1:
               results.append({

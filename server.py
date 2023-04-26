@@ -58,5 +58,36 @@ def get_pdf_sections():
     sections = PdfParser.parse_pdf_by_folder(pdf_file_path, folder_id)
     return jsonify({"status": "success", "results": sections})
 
+@app.route('/get_history', methods=['POST', 'OPTIONS'])
+def get_history():
+    
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "success"}), 200
+    
+    data = request.get_json()
+    search_folder = data.get('search_folder')
+    
+    if not search_folder:
+        return jsonify({"error": "search_folder parameter is required"}), 400
+    
+    DatabaseHelper.init(db_folder=search_folder)
+    rows = DatabaseHelper.read("SELECT * FROM history")
+    DatabaseHelper.close()
+    return jsonify({"status": "success", "results": rows}), 200
+
+@app.route('/delete_history_element', methods=['POST'])
+def delete_history():
+    data = request.get_json()
+    search_folder = data.get('search_folder')
+    id = data.get('id')
+    
+    if not search_folder or not id:
+        return jsonify({"error": "search_folder and id parameters are required"}), 400
+
+    DatabaseHelper.init(db_folder=search_folder)
+    DatabaseHelper.write("DELETE FROM history WHERE id = ?", (id,))
+    DatabaseHelper.close()
+    return jsonify({"status": "success", "message": "History item deleted successfully"}), 200
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3003, debug=True)

@@ -5,27 +5,28 @@ import { Api } from '../modules/api';
 
 interface IRResultsItemPreviewProps {
   folderId: string;
-  results: Array<ISearchResult>;
+  result: ISearchResult;
 }
+
+const SECTION_TEXTS_CACHE: Record<string, Array<string>> = {};
 
 export const ResultsItemPreview: React.FC<IRResultsItemPreviewProps> = React.memo(function ResultsItemPreview(props: IRResultsItemPreviewProps) {
   const [sectionsText, setSectionsText] = React.useState<Array<string>>([]);
 
   React.useEffect(() => {
     const fetchSections = async () => {
+      if (SECTION_TEXTS_CACHE[props.folderId]) {
+        setSectionsText(SECTION_TEXTS_CACHE[props.folderId]);
+        return;
+      }
       const sections = await Api.sectionsText(props.folderId);
+      SECTION_TEXTS_CACHE[props.folderId] = sections;
       setSectionsText(sections);
     };
-    if(!sectionsText.length){
-      fetchSections();
-    }
-  }, [props.folderId, sectionsText]);
+    fetchSections();
+  }, [props.folderId]);
 
   return (
-    <>
-      {props.results.map((result) => (
-        <ResultItemPreviewItem key={result.section_number} score={result.similarity} section={result.section_number} text={sectionsText[result.section_number]} />
-      ))}
-    </>
+    <ResultItemPreviewItem key={props.result.section_number} score={props.result.similarity} section={props.result.section_number} text={sectionsText[props.result.section_number]} />
   )
 });

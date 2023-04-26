@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { AppRoute } from '../modules/routing.const';
-import { MagnifyingGlassIcon, ListBulletIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { useLocation } from 'react-router-dom'
 
 
@@ -12,7 +12,7 @@ export const Sidebar: React.FC = () => {
   const location = useLocation()
   const navigation = [
     { name: 'Search', href: AppRoute.search, icon: MagnifyingGlassIcon, current: location.pathname === AppRoute.search },
-    { name: 'Results', href: AppRoute.results, icon: ListBulletIcon, current: location.pathname === AppRoute.results }
+    { name: 'History', href: AppRoute.history, icon: ClockIcon, current: location.pathname === AppRoute.results }
   ]
   return (
     <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6">

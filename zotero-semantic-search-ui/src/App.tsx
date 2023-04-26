@@ -2,14 +2,11 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { PickFolder } from './views/PickFolder';
 import { Search } from './views/Search';
 import { Results } from './views/Results';
+import { History } from './views/history';
 import { ResultsProvider } from './ResultsContext';
 import { AppRoute } from './modules/routing.const';
-import { Fragment, useState } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
-import {
-  Bars3Icon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline'
+import { useState } from 'react'
+import { Bars3Icon } from '@heroicons/react/24/outline'
 import { Sidebar } from './components/sidebar';
 import { SidebarMobileContainer } from './components/sidebar-mobile-container';
 
@@ -44,6 +41,7 @@ export const App: React.FC = () => {
                 <Route path={AppRoute.pickFolder} element={<PickFolder />} />
                 <Route path={AppRoute.search} element={<Search />} />
                 <Route path={AppRoute.results} element={<Results />} />
+                <Route path={AppRoute.history} element={<History />} />
                 <Route path="*" element={<Navigate to={AppRoute.search} />} />
               </Routes>
             </div>

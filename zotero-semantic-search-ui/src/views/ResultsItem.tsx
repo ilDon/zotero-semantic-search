@@ -5,14 +5,14 @@ import { ResultsItemPreview } from './ResultsItemPreview';
 
 interface IResultsItemProps {
   folderId: string;
-  results: Array<ISearchResult>;
+  result: ISearchResult
 }
 
 export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProps) => (
   <div className="mb-2">
     <Disclosure>
       <Disclosure.Button className="flex w-full justify-between rounded-lg bg-purple-100 px-4 py-2 text-left text-sm font-medium text-purple-900 hover:bg-purple-200 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75">
-        {props.results?.[0]?.file_name.replace('.pdf', '') || props.folderId}
+        {props.result?.file_name.replace('.pdf', '') || props.folderId}
       </Disclosure.Button>
 
       <Transition
@@ -24,7 +24,7 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
         leaveTo="transform scale-95 opacity-0"
       >
         <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-500">
-          <ResultsItemPreview folderId={props.folderId} results={props.results} />
+          <ResultsItemPreview folderId={props.folderId} result={props.result} />
         </Disclosure.Panel>
       </Transition>
     </Disclosure>
