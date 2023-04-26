@@ -9,7 +9,7 @@ export interface ISearchResult {
 
 interface ResultsContextValue {
   query: string;
-  results: ISearchResult[];
+  results: Array<ISearchResult>;
   setQuery: (query: string) => void;
   setResults: (results: ISearchResult[]) => void;
 }

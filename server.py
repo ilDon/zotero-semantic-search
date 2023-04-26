@@ -48,13 +48,14 @@ def get_pdf_sections():
         return jsonify({"error": "search_folder and folder_id parameters are required"}), 400
 
     pdf_file_path = None
-    for file in glob.glob(f"{search_folder}/{folder_id}/*"):
+    folder_blob = f"{search_folder}/{folder_id}/*"
+    for file in glob.glob(folder_blob):
         if file.endswith(".pdf"):
             pdf_file_path = file
             break
 
     if not pdf_file_path:
-        return jsonify({"error": "No PDF file found in the specified folder"}), 404
+        return jsonify({"error": f"No PDF file found in {folder_blob}"}), 404
 
     sections = PdfParser.parse_pdf_by_folder(pdf_file_path, folder_id)
     return jsonify({"status": "success", "results": sections})
