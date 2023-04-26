@@ -4,6 +4,7 @@ import { useResults } from '../ResultsContext';
 import { SearchFolder } from '../modules/search-folder';
 import { AppRoute } from '../modules/routing.const';
 import { Api } from '../modules/api';
+import { Routing } from '../modules/routing';
 
 export const Search: React.FC = () => {
   const [query, setQueryOnState] = React.useState('');
@@ -41,8 +42,8 @@ export const Search: React.FC = () => {
     try {
       setQuery(query)
       const response = await Api.query(query);
-      setResults(response);
-      navigate('/results');
+      setResults(response.results);
+      navigate(Routing.getRoute(AppRoute.results, { id: response.id }));
     } catch (error) {
       console.error(error);
     } finally {

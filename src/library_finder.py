@@ -30,7 +30,7 @@ class LibraryFinder:
         today = date.today().strftime("%Y-%m-%d")
         DatabaseHelper.write("INSERT INTO history (id, query, query_embedding, results, date) VALUES (?, ?, ?, ?, ?)",
                             (query_hash, query, json.dumps(query_embedding.tolist()), serialized_results, today))
-        return results
+        return [query_hash, results]
 
     def get_query_embedding(self, query: str) -> np.ndarray:
         return getTextEmbedding([query]).numpy()

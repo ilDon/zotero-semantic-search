@@ -33,9 +33,12 @@ class DatabaseHelper:
     _conn.commit()
 
   @staticmethod
-  def read(query):
+  def read(query, params = None):
     global _conn, _cursor
-    _cursor.execute(query)
+    if params:
+      _cursor.execute(query, params)
+    else:
+      _cursor.execute(query)
     rows = _cursor.fetchall()
     return rows
 

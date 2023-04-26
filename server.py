@@ -34,9 +34,9 @@ def query_files():
         return jsonify({"error": "search_folder and query parameters are required"}), 400
     
     finder = LibraryFinder(search_folder=search_folder)
-    results = finder.query_files(query)
+    [query_hash, results] = finder.query_files(query)
     DatabaseHelper.close()
-    return jsonify({"status": "success", "results": results}), 200
+    return jsonify({"status": "success", "results": results, "id": query_hash}), 200
 
 @app.route('/pdf_sections', methods=['POST'])
 def get_pdf_sections():
@@ -88,6 +88,32 @@ def get_history():
         results.append(result)
 
     return jsonify({"status": "success", "results": results}), 200
+
+@app.route('/fetch_history_element', methods=['POST'])
+def fetch_history_element():
+    data = request.get_json()
+    search_folder = data.get('search_folder')
+    id = data.get('id')
+    
+    if not search_folder or not id:
+        return jsonify({"error": "search_folder and id parameters are required"}), 400
+
+    db_folder = os.path.dirname(os.path.abspath(search_folder))
+    DatabaseHelper.init(db_folder=db_folder)
+    row = DatabaseHelper.read("SELECT id, query, results, date FROM history WHERE id = ?", (id,))
+    DatabaseHelper.close()
+
+    if not row:
+        return jsonify({"error": f"No history item found with id {id}"}), 404
+    first_row = row[0]
+    result = {
+        "id": first_row[0],
+        "query": first_row[1],
+        "results": first_row[2],
+        "date": first_row[3]
+    }
+
+    return jsonify({"status": "success", "results": result}), 200
 
 @app.route('/delete_history_element', methods=['POST'])
 def delete_history():

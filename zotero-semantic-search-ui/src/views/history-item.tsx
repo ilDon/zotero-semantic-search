@@ -5,6 +5,7 @@ import { AppRoute } from '../modules/routing.const';
 import { IHistoryItem } from '../modules/api';
 import { useNavigate } from 'react-router-dom';
 import { useResults } from '../ResultsContext';
+import { Routing } from '../modules/routing';
 
 interface IHistoryItemProps {
   history: IHistoryItem
@@ -18,7 +19,7 @@ export const HistoryItem: React.FC<IHistoryItemProps> = (props: IHistoryItemProp
   const handleHistoryItemClick = () => {
     setQuery(props.history.query);
     setResults(props.history.results);
-    navigate(AppRoute.results);
+    navigate(Routing.getRoute(AppRoute.results, { id: props.history.id }));
   };
 
   return (

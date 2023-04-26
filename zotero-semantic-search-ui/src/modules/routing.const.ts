@@ -1,6 +1,6 @@
 export enum AppRoute {
   pickFolder = '/pick-folder',
   search = '/search',
-  results = '/results',
+  results = '/results/:id',
   history = '/history',
 }

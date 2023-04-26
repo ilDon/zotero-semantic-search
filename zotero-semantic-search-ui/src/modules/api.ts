@@ -14,10 +14,22 @@ interface ISectionsTextPayload extends IBasePayload {
   folderId: string;
 }
 
+interface IHistoryItemPayload extends IBasePayload {
+  id: string;
+}
+
 interface IApiResponse<T> {
   data: {
     results: T;
     status: "success"
+  }
+}
+
+interface IQueryResponse {
+  data: {
+    results: Array<ISearchResult>;
+    status: "success"
+    id: string;
   }
 }
 
@@ -37,10 +49,10 @@ export class Api {
     await axios.post(`${BASE_URL}/scan`, { search_folder: searchFolder });
   }
 
-  public static async query(query: string): Promise<Array<ISearchResult>> {
+  public static async query(query: string): Promise<{ results: Array<ISearchResult>, id: string }> {
     const searchFolder = SearchFolder.getSearchFolder();
-    const response = await axios.post<IQueryPayload, IApiResponse<Array<ISearchResult>>> (`${BASE_URL}/query`, { query, search_folder: searchFolder });
-    return response?.data?.results || [];
+    const response = await axios.post<IQueryPayload, IQueryResponse> (`${BASE_URL}/query`, { query, search_folder: searchFolder });
+    return { results: response?.data?.results || [], id: response?.data?.id || ''};
   }
   
   public static async sectionsText(folderId: string): Promise<Array<string>> {
@@ -58,6 +70,17 @@ export class Api {
       });
     }
     return response?.data?.results || [];
+  }
+
+  public static async fetchHistoryElement(id: string): Promise<IHistoryItem> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    const response = await axios.post<IHistoryItemPayload, IApiResponse<IHistoryItem>>(`${BASE_URL}/fetch_history_element`, { search_folder: searchFolder, id });
+    const item = response?.data?.results;
+    console.log('fetchHistoryElement ~ response:', response)
+    if (item) {
+      item.results = JSON.parse(item.results as any);
+    }
+    return item;
   }
 
   public static async deleteHistoryElement(id: string): Promise<void> {
