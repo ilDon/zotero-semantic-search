@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This is a semantic search engine that uses the [Universal Sentence Encoder](https://tfhub.dev/google/universal-sentence-encoder/4) to encode a corpus of documents into vectors and then uses cosine similarity to find the most similar documents to a given query.
+This is a semantic search engine that uses the Bert-based model [LEALLA](https://tfhub.dev/google/LEALLA/LEALLA-large/1) to encode a corpus of documents into vectors and then uses cosine similarity to find the most similar documents to a given query.
 
 ## Usage
 
