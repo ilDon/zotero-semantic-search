@@ -134,6 +134,23 @@ def fetch_history_element():
 
     return jsonify({"status": "success", "results": result}), 200
 
+@app.route('/update_history_element', methods=['POST'])
+def update_history_element():
+    data = request.get_json()
+    search_folder = data.get('search_folder')
+    id = data.get('id')
+    results = data.get('results')
+    
+    if not search_folder or not id or not results:
+        return jsonify({"error": "search_folder, id, query and results parameters are required"}), 400
+
+    db_folder = os.path.dirname(os.path.abspath(search_folder))
+    DatabaseHelper.init(db_folder=db_folder)
+    DatabaseHelper.write("UPDATE history SET results = ? WHERE id = ?", (results, id))
+    DatabaseHelper.close()
+    return jsonify({"status": "success", "message": "History item updated successfully"}), 200
+
+
 @app.route('/delete_history_element', methods=['POST'])
 def delete_history():
     data = request.get_json()

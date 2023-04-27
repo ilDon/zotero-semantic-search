@@ -94,6 +94,11 @@ export class Api {
     return item;
   }
 
+  public async updateHistoryElement(id: string, results: Array<ISearchResult>): Promise<void> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    await axios.post(`${BASE_URL}/update_history_element`, { search_folder: searchFolder, id, results: JSON.stringify(results) });
+  }
+
   public async deleteHistoryElement(id: string): Promise<void> {
     const searchFolder = SearchFolder.getSearchFolder();
     await axios.post(`${BASE_URL}/delete_history_element`, { search_folder: searchFolder, id });
