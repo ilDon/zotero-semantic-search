@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Api } from '../modules/api';
+import { IndexedDbHelper } from '../modules/indexed-db-helper';
 
 interface PdfTextProviderProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ interface PdfTextContextData {
 const PdfTextContext = createContext<PdfTextContextData | undefined>(undefined);
 
 export const PdfTextProvider: React.FC<PdfTextProviderProps> = ({ children }) => {
+  const indexedDbHelper = React.useRef<IndexedDbHelper>(new IndexedDbHelper());
   const [sectionText, setSectionText] = useState<Record<string, Array<string>>>({}); 
   const [idsToFetch, setIdsToFetch] = useState<Array<string>>([]);
   const isFetching = React.useRef(false);
@@ -33,8 +35,15 @@ export const PdfTextProvider: React.FC<PdfTextProviderProps> = ({ children }) =>
         const id = idsToFetch.shift() as string;
         if (!sectionText[id]) {
           isFetching.current = true;
-          const text = await new Api().sectionsText(id);
-          setSectionText((prev) => ({ ...prev, [id]: text }));
+    
+          let text = await indexedDbHelper.current.getText(id);
+    
+          if (text === null) {
+            text = await new Api().sectionsText(id);
+            await indexedDbHelper.current.addText(id, text);
+          }
+    
+          setSectionText((prev) => ({ ...prev, [id]: text as Array<string> }));
         }
         setIdsToFetch((prev) => prev.filter((i) => i !== id));
         isFetching.current = false;
