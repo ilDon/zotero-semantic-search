@@ -13,6 +13,8 @@ export const Results: React.FC = () => {
   const navigate = useNavigate();
 
   const id = useParams()?.id;
+
+  const { sectionText } = usePdfText();
   
   React.useEffect(() => {
     const fetchResult = async () => {
@@ -46,6 +48,8 @@ export const Results: React.FC = () => {
 
 
   const uniqueIds = React.useMemo(() => [...new Set(sortedResult.map((result) => result.folder_id))], [sortedResult]);
+  const allAvailableTexts = React.useMemo(() => Object.keys(sectionText), [sectionText]);
+  const resultsTexts = React.useMemo(() => uniqueIds.filter((id) => allAvailableTexts.includes(id)), [uniqueIds, allAvailableTexts]);
 
   if (!id) {
     return (
@@ -62,13 +66,15 @@ export const Results: React.FC = () => {
     );
   }
 
+  const missingTexts = uniqueIds.length - resultsTexts.length;
+  const textToDisplayForTextFetching = missingTexts > 0 ? `Fetching text of file ${resultsTexts.length} of ${uniqueIds.length}` : `All texts available`;
 
   return (
     <div className="container mx-auto">
       <h1 className="text-3xl mb-5">Results</h1>
       <label className="text-sm text-gray-400">Query:</label>
       <p className="text-sm text-gray-500 mb-8">{query}</p>
-      <p className="text-sm text-gray-500 mb-8">Total results: {sortedResult.length} (in {uniqueIds.length} {uniqueIds.length === 1 ? 'file' : 'files'})</p>
+      <p className="text-sm text-gray-500 mb-8">Total results: {sortedResult.length} (in {uniqueIds.length} {uniqueIds.length === 1 ? 'file' : 'files'}) - {textToDisplayForTextFetching}</p>
       {sortedResult.map((result, index) => (
         <ResultsItem
           key={`${result.folder_id}-${result.section_number}`}
