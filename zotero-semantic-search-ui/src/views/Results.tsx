@@ -21,7 +21,7 @@ export const Results: React.FC = () => {
         setQuery(response.query);
         setResults(response.results);
       } else {
-        // navigate(AppRoute.search);
+        navigate(AppRoute.search);
       }
     };
 
