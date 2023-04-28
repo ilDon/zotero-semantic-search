@@ -45,6 +45,8 @@ export const Results: React.FC = () => {
   }, [sortedResult, addIds]);
 
 
+  const uniqueIds = React.useMemo(() => [...new Set(sortedResult.map((result) => result.folder_id))], [sortedResult]);
+
   if (!id) {
     return (
       <Navigate to={AppRoute.search} />
@@ -66,6 +68,7 @@ export const Results: React.FC = () => {
       <h1 className="text-3xl mb-5">Results</h1>
       <label className="text-sm text-gray-400">Query:</label>
       <p className="text-sm text-gray-500 mb-8">{query}</p>
+      <p className="text-sm text-gray-500 mb-8">Total results: {sortedResult.length} (in {uniqueIds.length} {uniqueIds.length === 1 ? 'file' : 'files'})</p>
       {sortedResult.map((result, index) => (
         <ResultsItem
           key={`${result.folder_id}-${result.section_number}`}
