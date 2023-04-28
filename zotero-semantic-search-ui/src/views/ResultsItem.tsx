@@ -15,8 +15,8 @@ interface IResultsItemProps {
 export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProps) => {
   const [resultStatus, setResultStatus] = React.useState<ISearchResult['status']>(props.result.status || Status.todo);
   const { getSectionText } = usePdfText();
-  const { updateResultStatus } = useResults();
   const sectionsText = getSectionText(props.folderId);
+  const { updateResultStatus } = useResults();
   
   const handleOpenFile = () => {
     new Api().openFile(props.folderId);
