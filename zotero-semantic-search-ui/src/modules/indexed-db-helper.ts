@@ -1,7 +1,8 @@
 import Dexie from 'dexie';
+import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
 
 export class IndexedDbHelper extends Dexie {
-  private texts: Dexie.Table<{ id: string; texts: Array<string> }, string>;
+  private texts: Dexie.Table<{ id: string; compressedText: string }, string>;
 
   constructor() {
     super('TextDatabase');
@@ -13,11 +14,16 @@ export class IndexedDbHelper extends Dexie {
   }
 
   async addText(id: string, texts: Array<string>): Promise<void> {
-    await this.texts.put({ id, texts });
+    const compressedText = compressToUTF16(JSON.stringify(texts));
+    await this.texts.put({ id, compressedText });
   }
 
   async getText(id: string): Promise<Array<string> | null> {
     const result = await this.texts.get(id);
-    return result?.texts ?? null;
+    if (result?.compressedText) {
+      const decompressedText = decompressFromUTF16(result.compressedText);
+      return JSON.parse(decompressedText) as Array<string>;
+    }
+    return null;
   }
 }

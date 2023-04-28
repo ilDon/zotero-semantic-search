@@ -18,6 +18,7 @@
     "concurrently": "^8.0.1"
   },
   "dependencies": {
-    "dexie": "^3.2.3"
+    "dexie": "^3.2.3",
+    "lz-string": "^1.5.0"
   }
 }
