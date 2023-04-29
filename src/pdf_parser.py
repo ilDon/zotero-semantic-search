@@ -4,19 +4,18 @@ import glob
 from typing import List
 from datetime import date
 
-from src.database import DatabaseHelper
 from src.const import MAX_SECTION_CHARS
 
 class PdfParser:
 
   @staticmethod
-  def parse_pdf_by_folder(file: str, folder_id: str) -> List[str]:
-      file_text = PdfParser.extract_text_from_file(file, folder_id)
+  def parse_pdf_by_folder(db_instance, file: str, folder_id: str) -> List[str]:
+      file_text = PdfParser.extract_text_from_file(db_instance, file, folder_id)
       sections = PdfParser.split_and_truncate(file_text)
       return sections
 
   @staticmethod
-  def extract_text_from_file(file: str, folder_id: str) -> str:
+  def extract_text_from_file(db_instance, file: str, folder_id: str) -> str:
         file_text = ""
         with open(file, "rb") as pdf_file:
             with open(os.devnull, 'w') as devnull:
@@ -31,7 +30,7 @@ class PdfParser:
                     else:
                         # add to excluded in DB
                         today = date.today().strftime("%Y-%m-%d")
-                        DatabaseHelper.write("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (folder_id, "encrypted", date))
+                        db_instance.write("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (folder_id, "encrypted", date))
                         print(f"\n\nSkipping encrypted file: {pdf_file.name}\n")
                 finally:
                     reader = None

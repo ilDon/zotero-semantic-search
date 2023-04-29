@@ -18,7 +18,6 @@ def process_files():
     
     processor = LibraryProcessor(search_folder=search_folder)
     processor.process_files()
-    DatabaseHelper.close()
     return jsonify({"status": "success", "message": "Files processed successfully"}), 200
 
 @app.route('/query', methods=['POST'])
@@ -32,7 +31,6 @@ def query_files():
     
     finder = LibraryFinder(search_folder=search_folder)
     [query_hash, results] = finder.query_files(query)
-    DatabaseHelper.close()
     return jsonify({"status": "success", "results": results, "id": query_hash}), 200
 
 @app.route('/pdf_sections', methods=['POST'])
@@ -49,7 +47,9 @@ def get_pdf_sections():
     if not pdf_file_path:
         return jsonify({"error": f"No PDF file found in {folder_blob}"}), 404
 
-    sections = PdfParser.parse_pdf_by_folder(pdf_file_path, folder_id)
+    db_folder = os.path.dirname(os.path.abspath(search_folder))
+    db = DatabaseHelper(db_folder=db_folder)
+    sections = PdfParser.parse_pdf_by_folder(db, pdf_file_path, folder_id)
     return jsonify({"status": "success", "results": sections})
 
 @app.route('/open_file', methods=['POST'])
@@ -89,9 +89,9 @@ def get_history():
         return jsonify({"error": "search_folder parameter is required"}), 400
     
     db_folder = os.path.dirname(os.path.abspath(search_folder))
-    DatabaseHelper.init(db_folder=db_folder)
-    rows = DatabaseHelper.read("SELECT id, query, results, date FROM history")
-    DatabaseHelper.close()
+    db = DatabaseHelper(db_folder=db_folder)
+    rows = db.read("SELECT id, query, results, date FROM history")
+    db.close()
 
     results = []
     for row in rows:
@@ -115,9 +115,9 @@ def fetch_history_element():
         return jsonify({"error": "search_folder and id parameters are required"}), 400
 
     db_folder = os.path.dirname(os.path.abspath(search_folder))
-    DatabaseHelper.init(db_folder=db_folder)
-    row = DatabaseHelper.read("SELECT id, query, results, date FROM history WHERE id = ?", (id,))
-    DatabaseHelper.close()
+    db = DatabaseHelper(db_folder=db_folder)
+    row = db.read("SELECT id, query, results, date FROM history WHERE id = ?", (id,))
+    db.close()
 
     if not row:
         return jsonify({"error": f"No history item found with id {id}"}), 404
@@ -142,9 +142,9 @@ def update_history_element():
         return jsonify({"error": "search_folder, id, query and results parameters are required"}), 400
 
     db_folder = os.path.dirname(os.path.abspath(search_folder))
-    DatabaseHelper.init(db_folder=db_folder)
-    DatabaseHelper.write("UPDATE history SET results = ? WHERE id = ?", (results, id))
-    DatabaseHelper.close()
+    db = DatabaseHelper(db_folder=db_folder)
+    db.write("UPDATE history SET results = ? WHERE id = ?", (results, id))
+    db.close()
     return jsonify({"status": "success", "message": "History item updated successfully"}), 200
 
 
@@ -158,9 +158,9 @@ def delete_history():
         return jsonify({"error": "search_folder and id parameters are required"}), 400
 
     db_folder = os.path.dirname(os.path.abspath(search_folder))
-    DatabaseHelper.init(db_folder=db_folder)
-    DatabaseHelper.write("DELETE FROM history WHERE id = ?", (id,))
-    DatabaseHelper.close()
+    db = DatabaseHelper(db_folder=db_folder)
+    db.write("DELETE FROM history WHERE id = ?", (id,))
+    db.close()
     return jsonify({"status": "success", "message": "History item deleted successfully"}), 200
 
 @app.route('/get_excluded', methods=['POST', 'OPTIONS'])
@@ -176,9 +176,9 @@ def get_excluded():
           return jsonify({"error": "search_folder parameter is required"}), 400
       
       db_folder = os.path.dirname(os.path.abspath(search_folder))
-      DatabaseHelper.init(db_folder=db_folder)
-      rows = DatabaseHelper.read("SELECT id, reason, date FROM excluded ORDER BY date DESC")
-      DatabaseHelper.close()
+      db = DatabaseHelper(db_folder=db_folder)
+      rows = db.read("SELECT id, reason, date FROM excluded ORDER BY date DESC")
+      db.close()
   
       results = []
       for row in rows:
@@ -204,9 +204,9 @@ def get_excluded_ids():
           return jsonify({"error": "search_folder parameter is required"}), 400
       
       db_folder = os.path.dirname(os.path.abspath(search_folder))
-      DatabaseHelper.init(db_folder=db_folder)
-      rows = DatabaseHelper.read("SELECT id FROM excluded")
-      DatabaseHelper.close()
+      db = DatabaseHelper(db_folder=db_folder)
+      rows = db.read("SELECT id FROM excluded")
+      db.close()
   
       results = []
       for row in rows:
@@ -225,11 +225,11 @@ def add_excluded():
         return jsonify({"error": "search_folder, id and reason parameters are required"}), 400
 
     db_folder = os.path.dirname(os.path.abspath(search_folder))
-    DatabaseHelper.init(db_folder=db_folder)
+    db = DatabaseHelper(db_folder=db_folder)
     today = date.today().strftime("%Y-%m-%d")
-    DatabaseHelper.write("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (id, reason, today))
-    DatabaseHelper.write("DELETE FROM embeddings WHERE id = ?", (id,))
-    DatabaseHelper.close()
+    db.write("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (id, reason, today))
+    db.write("DELETE FROM embeddings WHERE id = ?", (id,))
+    db.close()
     return jsonify({"status": "success", "message": "Excluded item added successfully"}), 200
 
 @app.route('/delete_excluded', methods=['POST'])
@@ -242,9 +242,9 @@ def delete_excluded():
         return jsonify({"error": "search_folder and id parameters are required"}), 400
 
     db_folder = os.path.dirname(os.path.abspath(search_folder))
-    DatabaseHelper.init(db_folder=db_folder)
-    DatabaseHelper.write("DELETE FROM excluded WHERE id = ?", (id,))
-    DatabaseHelper.close()
+    db = DatabaseHelper(db_folder=db_folder)
+    db.write("DELETE FROM excluded WHERE id = ?", (id,))
+    db.close()
     return jsonify({"status": "success", "message": "Excluded item deleted successfully"}), 200
 
 if __name__ == '__main__':

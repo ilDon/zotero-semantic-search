@@ -20,7 +20,7 @@ class LibraryFinder:
     def __init__(self, search_folder="test_files"):
         self.search_folder = search_folder
         db_folder = os.path.dirname(os.path.abspath(search_folder))
-        DatabaseHelper.init(db_folder=db_folder)
+        self.db = DatabaseHelper(db_folder=db_folder)
 
     def query_files(self, query: str) -> List:
         hash_object = hashlib.sha256(query.encode('utf-8'))
@@ -30,8 +30,9 @@ class LibraryFinder:
         results = self.calculate_similarities(query_embedding, rows)
         serialized_results = json.dumps(results)
         today = date.today().strftime("%Y-%m-%d")
-        DatabaseHelper.write("INSERT INTO history (id, query, query_embedding, results, date) VALUES (?, ?, ?, ?, ?)",
+        self.db.write("INSERT INTO history (id, query, query_embedding, results, date) VALUES (?, ?, ?, ?, ?)",
                             (query_hash, query, json.dumps(query_embedding.tolist()), serialized_results, today))
+        self.db.close()
         return [query_hash, results]
 
     def get_query_embedding(self, query: str) -> np.ndarray:
@@ -41,7 +42,7 @@ class LibraryFinder:
         global cached_results
         if cached_results:
             return cached_results
-        cached_results = DatabaseHelper.read("SELECT id, file_name, section_number, embedding FROM embeddings")
+        cached_results = self.db.read("SELECT id, file_name, section_number, embedding FROM embeddings")
         return cached_results
 
     def send_progress(self, progress: int):
