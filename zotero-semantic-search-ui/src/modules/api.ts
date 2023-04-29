@@ -42,7 +42,7 @@ export interface IHistoryItem {
 
 export interface IExcludedFolder {
   id: string;
-  reason: 'encrypted' | 'no_text' | 'manual';
+  reason: 'encrypted' | 'no_text' | 'manual' | 'duplicate' | 'other';
   date: string
   file_name: string;
 }

@@ -9,11 +9,11 @@ interface IExcludedAddProps {
 export const ExcludedAdd: React.FC<IExcludedAddProps> = (props) => {
   const [isRemoving, setIsRemoving] = React.useState<boolean>(false);
   const [folderId, setFolderId] = React.useState<string>('');
-  const [reason, setReason] = React.useState<IExcludedFolder['reason']>('manual');
+  const [reason, setReason] = React.useState<IExcludedFolder['reason']>('other');
   
   const onCancel = () => {
     setFolderId('');
-    setReason('manual');
+    setReason('other');
   };
   
   const handleFormSubmit = async () => {
@@ -75,9 +75,11 @@ export const ExcludedAdd: React.FC<IExcludedAddProps> = (props) => {
                           onChange={(e) => setReason(e.target.value as IExcludedFolder['reason'])}
                           className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:max-w-xs sm:text-sm sm:leading-6"
                         >
-                          <option selected={reason === 'encrypted'} value="encrypted">encrypted</option>
-                          <option selected={reason === 'no_text'} value="no_text">no_text</option>
-                          <option selected={reason === 'manual'} value="manual">manual</option>
+                          <option value="encrypted">encrypted</option>
+                          <option value="no_text">no_text</option>
+                          <option value="duplicate">duplicate</option>
+                          <option value="manual">manual</option>
+                          <option value="other">other</option>
                         </select>
                       </div>
                     </div>

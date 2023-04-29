@@ -44,7 +44,7 @@ export const Excluded: React.FC = () => {
               <p className="text-sm text-gray-500">{excluded.reason}</p>
             </div>
             <div className="ml-auto pl-3">
-              {excluded.reason === 'manual' && (
+              {excluded.reason !== 'encrypted' && excluded.reason !== 'no_text' && (
                 <button
                   type="button"
                   className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
