@@ -7,7 +7,7 @@ import { AppRoute } from '../../modules/routing.const';
 import { usePdfText } from '../../providers/pdf-text-provider';
 
 export const Results: React.FC = () => {
-  const { setQuery, setResults, query, results } = useResults();
+  const { setQuery, setResults, removeResultsByFolderIds, query, results } = useResults();
   const { addIds } = usePdfText();
 
   const navigate = useNavigate();
@@ -31,6 +31,20 @@ export const Results: React.FC = () => {
       fetchResult();
     }
   }, [id, query, results, setQuery, setResults, navigate]);
+
+  React.useEffect(() => {
+    const removeExcludedIds = async () => {
+      const excludedIds = await new Api().getExcludedIds();
+      const resultsContainExcludedIds = results.some((result) => excludedIds.includes(result.folder_id));
+      if (resultsContainExcludedIds) {
+        removeResultsByFolderIds(id!, excludedIds);
+      }
+    };
+
+    if (results.length && id) {
+      removeExcludedIds();
+    }
+  }, [id, results, removeResultsByFolderIds]);
   
   const sortedResult = React.useMemo(() => results.sort((a, b) => b.similarity - a.similarity), [results]);
 

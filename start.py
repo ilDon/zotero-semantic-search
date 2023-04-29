@@ -192,6 +192,28 @@ def get_excluded():
   
       return jsonify({"status": "success", "results": results}), 200
 
+@app.route('/get_excluded_ids', methods=['POST', 'OPTIONS'])
+def get_excluded_ids():
+      if request.method == 'OPTIONS':
+          return jsonify({"status": "success"}), 200
+      
+      data = request.get_json()
+      search_folder = data.get('search_folder')
+      
+      if not search_folder:
+          return jsonify({"error": "search_folder parameter is required"}), 400
+      
+      db_folder = os.path.dirname(os.path.abspath(search_folder))
+      DatabaseHelper.init(db_folder=db_folder)
+      rows = DatabaseHelper.read("SELECT id FROM excluded")
+      DatabaseHelper.close()
+  
+      results = []
+      for row in rows:
+          results.append(row[0])
+  
+      return jsonify({"status": "success", "results": results}), 200
+
 @app.route('/add_excluded', methods=['POST'])
 def add_excluded():
     data = request.get_json()

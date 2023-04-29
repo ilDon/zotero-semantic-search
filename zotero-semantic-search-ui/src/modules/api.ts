@@ -110,6 +110,12 @@ export class Api {
     return response?.data?.results || [];
   }
 
+  public async getExcludedIds(): Promise<Array<string>> {
+    const searchFolder = SearchFolder.getSearchFolder();
+    const response = await axios.post<IBasePayload, IApiResponse<Array<string>>>(`${BASE_URL}/get_excluded_ids`, { search_folder: searchFolder });
+    return response?.data?.results || [];
+  }
+
   public async addExcluded(folderId: string, reason: IExcludedFolder['reason']): Promise<void> {
     const searchFolder = SearchFolder.getSearchFolder();
     await axios.post(`${BASE_URL}/add_excluded`, { search_folder: searchFolder, folder_id: folderId, reason });

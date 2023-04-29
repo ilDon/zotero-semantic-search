@@ -21,6 +21,7 @@ interface ResultsContextValue {
   setQuery: (query: string) => void;
   setResults: (results: ISearchResult[]) => void;
   updateResultStatus: (index: number, status: Status, historyElementId: string) => void;
+  removeResultsByFolderIds: (historyElementId: string, folderIds: Array<string>) => void;
 }
 
 const ResultsContext = React.createContext<ResultsContextValue | undefined>(undefined);
@@ -49,9 +50,17 @@ export const ResultsProvider: React.FC<IResultsProviderProps> = (props: IResults
       return newResults;
     });
   }, []);
+  
+  const removeResultsByFolderIds = React.useCallback((historyElementId: string, folderIds: Array<string>) => {
+    setResults((prev) => {
+      const newResults = [...prev.filter((result) => !folderIds.includes(result.folder_id))];
+      new Api().updateHistoryElement(historyElementId, newResults);
+      return newResults;
+    });
+  }, []);
 
   return (
-    <ResultsContext.Provider value={{ query, results, setQuery, setResults, updateResultStatus }}>
+    <ResultsContext.Provider value={{ query, results, setQuery, setResults, updateResultStatus, removeResultsByFolderIds }}>
       {props.children}
     </ResultsContext.Provider>
   );
