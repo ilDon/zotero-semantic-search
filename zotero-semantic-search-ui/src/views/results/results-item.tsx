@@ -62,6 +62,10 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
                 <div className="">
                   <div className="flex space-x-3">
                     <div className="min-w-0 flex-1">
+                      <FileNameWithId
+                        fileName={props.result?.file_name}
+                        id={props.folderId}
+                      />
                       <p className="text-sm font-semibold text-gray-900">
                         Score: {props.result.similarity}
                         <span className="ml-2 text-sm text-gray-500">
@@ -71,12 +75,12 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
                     </div>
                   </div>
                   {!!sectionsText?.[props.result.section_number] && (
-                    <div className="pb-5 text-gray-500">
+                    <div className="pt-2 pb-5 text-gray-600 text-lg">
                       <p>{sectionsText[props.result.section_number]}</p>
                     </div>
                   )}
                   {!sectionsText?.[props.result.section_number] && (
-                    <p className="my-4">Loading...</p>
+                    <p className="my-4 text-gray-600">Loading...</p>
                   )}
                   <div className="flex justify-between">
                     <button
