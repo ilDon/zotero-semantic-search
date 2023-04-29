@@ -5,6 +5,7 @@ import { SearchFolder } from '../modules/search-folder';
 import { AppRoute } from '../modules/routing.const';
 import { Api } from '../modules/api';
 import { Routing } from '../modules/routing';
+import { SearchProgress } from './search-progress';
 
 export const Search: React.FC = () => {
   const [query, setQueryOnState] = React.useState('');
@@ -93,6 +94,7 @@ export const Search: React.FC = () => {
           {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
+      <SearchProgress isSearching={loading} />
     </div>
   );
 };
