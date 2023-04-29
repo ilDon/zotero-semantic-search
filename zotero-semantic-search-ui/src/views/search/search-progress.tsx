@@ -14,12 +14,14 @@ export const SearchProgress: React.FC<ISearchProgressProps> = (props) => {
   
   useEffect(() => {
     if (props.isSearching) {
-      setStartTime(Date.now());
+      if(progress === 1) {
+        setStartTime(Date.now());
+      }
     } else {
       setProgress(0);
       setExpectedEndTime(0);
     }
-  }, [props.isSearching]);
+  }, [props.isSearching, progress]);
   
   useEffect(() => {
 
