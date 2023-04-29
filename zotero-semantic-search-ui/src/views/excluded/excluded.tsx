@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Api, IExcludedFolder } from '../modules/api';
-import { FileNameWithId } from '../components/file-name-with-id';
 import { ExcludedAdd } from './excluded-add';
+import { FileNameWithId } from '../../components/file-name-with-id';
+import { IExcludedFolder, Api } from '../../modules/api';
 
 export const Excluded: React.FC = () => {
   const [excluded, setExcluded] = React.useState<Array<IExcludedFolder> | null>(null);

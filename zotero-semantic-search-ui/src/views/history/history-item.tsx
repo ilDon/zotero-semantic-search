@@ -1,11 +1,11 @@
 import * as React from 'react'
 import { Menu, Transition } from '@headlessui/react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import { AppRoute } from '../modules/routing.const';
-import { IHistoryItem } from '../modules/api';
+import { AppRoute } from '../../modules/routing.const';
+import { IHistoryItem } from '../../modules/api';
 import { useNavigate } from 'react-router-dom';
-import { useResults } from '../ResultsContext';
-import { Routing } from '../modules/routing';
+import { Routing } from '../../modules/routing';
+import { useResults } from '../results/results-provider';
 
 interface IHistoryItemProps {
   history: IHistoryItem

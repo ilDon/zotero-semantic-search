@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Api } from './modules/api';
+import { Api } from '../../modules/api';
 
 export enum Status {
   todo = 0,

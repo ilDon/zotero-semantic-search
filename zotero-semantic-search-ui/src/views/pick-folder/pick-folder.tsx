@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchFolder } from '../modules/search-folder';
+import { SearchFolder } from '../../modules/search-folder';
 
 export const PickFolder: React.FC = () => {
   const [folderPath, setFolderPath] = React.useState('');

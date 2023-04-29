@@ -1,15 +1,12 @@
 import subprocess, os, platform
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import request, jsonify
 from datetime import date
 
 from src.library_processor import LibraryProcessor
 from src.library_finder import LibraryFinder
 from src.pdf_parser import PdfParser
 from src.database import DatabaseHelper
-
-app = Flask(__name__)
-CORS(app) # Enable CORS for all routes
+from src.server import socketio, app
 
 @app.route('/scan', methods=['POST'])
 def process_files():
@@ -229,4 +226,4 @@ def delete_excluded():
     return jsonify({"status": "success", "message": "Excluded item deleted successfully"}), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3003, debug=True)
+    socketio.run(app, allow_unsafe_werkzeug=True)

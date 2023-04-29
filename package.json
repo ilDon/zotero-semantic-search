@@ -7,8 +7,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start-api": "python server.py",
-    "start-api-mac": "python3 server.py",
+    "start-api": "python start.py",
+    "start-api-mac": "python3 start.py",
     "start-app": "cd zotero-semantic-search-ui && yarn start",
     "start": "concurrently \"yarn start-api\" \"yarn start-app\"",
     "start-mac": "concurrently \"yarn start-api-mac\" \"yarn start-app\"",

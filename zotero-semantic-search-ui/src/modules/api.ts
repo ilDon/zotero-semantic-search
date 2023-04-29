@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { SearchFolder } from './search-folder';
-import { ISearchResult } from '../ResultsContext';
+import type { ISearchResult } from '../views/results/results-provider';
 
 interface IBasePayload {
   search_folder: string;
@@ -47,7 +47,7 @@ export interface IExcludedFolder {
   file_name: string;
 }
 
-const BASE_URL = 'http://127.0.0.1:3003';
+export const BASE_URL = 'http://127.0.0.1:5000';
 
 export class Api {
 
