@@ -3,7 +3,7 @@ import { Api } from '../../modules/api';
 
 export enum Status {
   todo = 0,
-  analyzed = 1,
+  cited = 1,
   irrelevant = 2
 }
 

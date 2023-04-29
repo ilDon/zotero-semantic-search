@@ -31,7 +31,7 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
     switch (resultStatus) {
       case Status.todo:
         return 'bg-purple-100 text-purple-900 hover:bg-purple-200 focus-visible:ring-purple-500';
-      case Status.analyzed:
+      case Status.cited:
         return 'bg-green-100 text-green-900 hover:bg-green-200 focus-visible:ring-green-500';
       case Status.irrelevant:
         return 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-gray-500';
@@ -97,7 +97,7 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
                       }}
                     >
                       <option value={Status.todo}>Todo</option>
-                      <option value={Status.analyzed}>Analyzed</option>
+                      <option value={Status.cited}>Cited</option>
                       <option value={Status.irrelevant}>Irrelevant</option>
                     </select>
                   </div>
