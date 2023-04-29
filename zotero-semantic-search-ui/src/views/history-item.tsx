@@ -4,7 +4,7 @@ import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { AppRoute } from '../modules/routing.const';
 import { IHistoryItem } from '../modules/api';
 import { useNavigate } from 'react-router-dom';
-import { useResults } from '../ResultsContext';
+import { useResults } from './results-provider';
 import { Routing } from '../modules/routing';
 
 interface IHistoryItemProps {

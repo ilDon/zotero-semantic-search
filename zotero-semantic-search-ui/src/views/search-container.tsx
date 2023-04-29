@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useResults } from '../ResultsContext';
+import { useResults } from './results-provider';
 import { SearchFolder } from '../modules/search-folder';
 import { AppRoute } from '../modules/routing.const';
 import { Api } from '../modules/api';

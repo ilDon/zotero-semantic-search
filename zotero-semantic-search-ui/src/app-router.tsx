@@ -1,9 +1,9 @@
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { PickFolder } from './views/PickFolder';
-import { Search } from './views/Search';
-import { Results } from './views/Results';
+import { PickFolder } from './views/pick-folder';
+import { Search } from './views/search-container';
+import { Results } from './views/results-container';
 import { History } from './views/history';
-import { ResultsProvider } from './ResultsContext';
+import { ResultsProvider } from './views/results-provider';
 import { AppRoute } from './modules/routing.const';
 import { useState } from 'react'
 import { Bars3Icon } from '@heroicons/react/24/outline'
