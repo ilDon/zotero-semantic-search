@@ -2,9 +2,9 @@ import * as React from 'react';
 import { useResults } from './results-provider';
 import { ResultsItem } from './results-item';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { Api } from '../modules/api';
-import { AppRoute } from '../modules/routing.const';
-import { usePdfText } from '../providers/pdf-text-provider';
+import { Api } from '../../modules/api';
+import { AppRoute } from '../../modules/routing.const';
+import { usePdfText } from '../../providers/pdf-text-provider';
 
 export const Results: React.FC = () => {
   const { setQuery, setResults, query, results } = useResults();

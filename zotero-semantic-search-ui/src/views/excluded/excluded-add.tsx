@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Api, IExcludedFolder } from '../modules/api';
+import { Api, IExcludedFolder } from '../../modules/api';
 import { Disclosure, Transition } from '@headlessui/react';
 
 interface IExcludedAddProps {

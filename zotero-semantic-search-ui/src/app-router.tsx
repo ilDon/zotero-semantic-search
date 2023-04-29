@@ -1,16 +1,16 @@
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { PickFolder } from './views/pick-folder';
-import { Search } from './views/search-container';
-import { Results } from './views/results-container';
-import { History } from './views/history';
-import { ResultsProvider } from './views/results-provider';
+import { PickFolder } from './views/pick-folder/pick-folder';
 import { AppRoute } from './modules/routing.const';
 import { useState } from 'react'
 import { Bars3Icon } from '@heroicons/react/24/outline'
 import { Sidebar } from './components/sidebar';
 import { SidebarMobileContainer } from './components/sidebar-mobile-container';
-import { Excluded } from './views/excluded';
 import { PdfTextProvider } from './providers/pdf-text-provider';
+import { Excluded } from './views/excluded/excluded';
+import { Results } from './views/results/results';
+import { History } from './views/history/history';
+import { ResultsProvider } from './views/results/results-provider';
+import { Search } from './views/search/search';
 
 export const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)

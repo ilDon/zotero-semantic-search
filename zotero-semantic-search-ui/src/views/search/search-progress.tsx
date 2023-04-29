@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { WebSocketHandler } from '../modules/web-socket-handler';
+import { WebSocketHandler } from '../../modules/web-socket-handler';
 
 interface ISearchProgressProps {
   isSearching: boolean;

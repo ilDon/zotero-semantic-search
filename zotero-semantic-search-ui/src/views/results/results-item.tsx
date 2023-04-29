@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { ISearchResult, Status, useResults } from './results-provider';
 import { Disclosure, Transition } from '@headlessui/react';
-import { FileNameWithId } from '../components/file-name-with-id';
-import { usePdfText } from '../providers/pdf-text-provider';
-import { Api } from '../modules/api';
+import { FileNameWithId } from '../../components/file-name-with-id';
+import { usePdfText } from '../../providers/pdf-text-provider';
+import { Api } from '../../modules/api';
 
 interface IResultsItemProps {
   folderId: string;

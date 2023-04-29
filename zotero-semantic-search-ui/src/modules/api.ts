@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { SearchFolder } from './search-folder';
-import { ISearchResult } from '../views/results-provider';
+import type { ISearchResult } from '../views/results/results-provider';
 
 interface IBasePayload {
   search_folder: string;

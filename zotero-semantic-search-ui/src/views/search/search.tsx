@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useResults } from './results-provider';
-import { SearchFolder } from '../modules/search-folder';
-import { AppRoute } from '../modules/routing.const';
-import { Api } from '../modules/api';
-import { Routing } from '../modules/routing';
 import { SearchProgress } from './search-progress';
+import { Api } from '../../modules/api';
+import { Routing } from '../../modules/routing';
+import { AppRoute } from '../../modules/routing.const';
+import { SearchFolder } from '../../modules/search-folder';
+import { useResults } from '../results/results-provider';
 
 export const Search: React.FC = () => {
   const [query, setQueryOnState] = React.useState('');
