@@ -22,7 +22,7 @@ class LibraryProcessor:
 
     def get_processed_folder_ids(self, table_name: str):
         folder_ids = set()
-        rows = self.dbread(f"SELECT DISTINCT id FROM {table_name}")
+        rows = self.db.read(f"SELECT DISTINCT id FROM {table_name}")
         for row in rows:
             folder_ids.add(row[0])
         return folder_ids
@@ -63,7 +63,7 @@ class LibraryProcessor:
             # Check sections length is > 0 and all sections are not empty
             if len(sections) == 0 or all([len(section) == 0 for section in sections]):
                 today = date.today().strftime("%Y-%m-%d")
-                self.dbwrite("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (folder_id, "no_text", today))
+                self.db.write("INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)", (folder_id, "no_text", today))
                 continue
 
             self.save_embeddings(folder_id, file_name, sections)
