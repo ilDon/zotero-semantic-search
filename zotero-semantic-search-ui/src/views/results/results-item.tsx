@@ -4,6 +4,7 @@ import { Disclosure, Transition } from '@headlessui/react';
 import { FileNameWithId } from '../../components/file-name-with-id';
 import { usePdfText } from '../../providers/pdf-text-provider';
 import { Api } from '../../modules/api';
+import { ResultsItemText } from './results-item-text';
 
 interface IResultsItemProps {
   folderId: string;
@@ -75,9 +76,7 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
                     </div>
                   </div>
                   {!!sectionsText?.[props.result.section_number] && (
-                    <div className="pt-2 pb-5 text-gray-600 text-lg">
-                      <p>{sectionsText[props.result.section_number]}</p>
-                    </div>
+                    <ResultsItemText text={sectionsText[props.result.section_number]} />
                   )}
                   {!sectionsText?.[props.result.section_number] && (
                     <p className="my-4 text-gray-600">Loading...</p>
