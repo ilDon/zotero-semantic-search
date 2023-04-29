@@ -26,12 +26,17 @@ class DatabaseHelper:
   @staticmethod
   def write(query, params = None):
     global _conn, _cursor
-    if params:
-      _cursor.execute(query, params)
-    else:
-      _cursor.execute(query)
-    _conn.commit()
-
+    try:
+      if params:
+        _cursor.execute(query, params)
+      else:
+        _cursor.execute(query)
+      _conn.commit()
+    except Exception as e:
+      print(f"Error executing query: {query}")
+      print(f"Params: {params}")
+      print(f"Exception: {e}")
+      
   @staticmethod
   def read(query, params = None):
     global _conn, _cursor
