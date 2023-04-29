@@ -58,7 +58,7 @@ class LibraryProcessor:
 
             folder_id = os.path.basename(folder)
             file_name = os.path.basename(file)
-            sections = PdfParser.parse_pdf_by_folder(self.db_folder, file, folder_id)
+            sections = PdfParser.parse_pdf_by_folder(self.db, file, folder_id)
 
             # Check sections length is > 0 and all sections are not empty
             if len(sections) == 0 or all([len(section) == 0 for section in sections]):
