@@ -36,11 +36,9 @@ export const SearchProgressEta: React.FC<ISearchProgressEtaProps> = (props) => {
 
   const remainingTime = Math.round((props.expectedEndTime - currentTime) / 1000);
 
-  if (remainingTime < 0) {
-    return null;
-  }
-
   return (
-    <p className="text-gray-500 mt-2 text-sm">ETA: {convertSecondsToTime(remainingTime)}</p>
+    <p className="text-gray-500 mt-2 text-sm">
+      ETA: {remainingTime < 0 ? <span className="animate-ping font-semibold text-gray-500">?</span> : convertSecondsToTime(remainingTime)}
+    </p>
   );
 };
