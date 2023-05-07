@@ -42,10 +42,10 @@ export const History: React.FC = () => {
     <div className="container mx-auto">
       <h1 className="text-3xl mb-5">History</h1>
       <ul className="divide-y divide-gray-100">
-      {histories.map((history) => (
-        <HistoryItem key={history.id} history={history} onDelete={handleDeleteHistory} />
-      ))}
-    </ul>
+        {histories.map((history) => (
+          <HistoryItem key={history.id} history={history} onDelete={handleDeleteHistory} />
+        ))}
+      </ul>
     </div>
   );
 };

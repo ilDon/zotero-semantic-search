@@ -25,7 +25,7 @@ export const HistoryItem: React.FC<IHistoryItemProps> = (props: IHistoryItemProp
   const toBeCompleted = React.useMemo(() => props.history.results.filter(result => !result.status).length, [props.history.results]);
   const badgeColor = !toBeCompleted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
   return (
-    <li className="flex items-center justify-between gap-x-6 py-5">
+    <li className="flex items-start justify-between gap-x-6 py-5">
       <div className="min-w-0">
         <div className="flex items-center gap-x-3">
           <p className="text-sm font-semibold leading-6 text-gray-900">
