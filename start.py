@@ -1,5 +1,6 @@
 import subprocess, os, platform
 from flask import request, jsonify
+from flask_cors import cross_origin
 from datetime import date
 
 from src.library_processor import LibraryProcessor
@@ -9,6 +10,7 @@ from src.database import DatabaseHelper
 from src.server import socketio, app
 
 @app.route('/scan', methods=['POST'])
+@cross_origin(origins="*")
 def process_files():
     data = request.get_json()
     search_folder = data.get('search_folder')
@@ -21,6 +23,7 @@ def process_files():
     return jsonify({"status": "success", "message": "Files processed successfully"}), 200
 
 @app.route('/query', methods=['POST'])
+@cross_origin(origins="*")
 def query_files():
     data = request.get_json()
     search_folder = data.get('search_folder', 'test_files')
@@ -34,6 +37,7 @@ def query_files():
     return jsonify({"status": "success", "results": results, "id": query_hash}), 200
 
 @app.route('/pdf_sections', methods=['POST'])
+@cross_origin(origins="*")
 def get_pdf_sections():
     data = request.get_json()
     search_folder = data.get('search_folder')
@@ -53,6 +57,7 @@ def get_pdf_sections():
     return jsonify({"status": "success", "results": sections})
 
 @app.route('/open_file', methods=['POST'])
+@cross_origin(origins="*")
 def open_file():
     data = request.get_json()
     search_folder = data.get('search_folder')
@@ -77,6 +82,7 @@ def open_file():
 
 
 @app.route('/get_history', methods=['POST', 'OPTIONS'])
+@cross_origin(origins="*")
 def get_history():
     
     if request.method == 'OPTIONS':
@@ -106,6 +112,7 @@ def get_history():
     return jsonify({"status": "success", "results": results}), 200
 
 @app.route('/fetch_history_element', methods=['POST'])
+@cross_origin(origins="*")
 def fetch_history_element():
     data = request.get_json()
     search_folder = data.get('search_folder')
@@ -132,6 +139,7 @@ def fetch_history_element():
     return jsonify({"status": "success", "results": result}), 200
 
 @app.route('/update_history_element', methods=['POST'])
+@cross_origin(origins="*")
 def update_history_element():
     data = request.get_json()
     search_folder = data.get('search_folder')
@@ -149,6 +157,7 @@ def update_history_element():
 
 
 @app.route('/delete_history_element', methods=['POST'])
+@cross_origin(origins="*")
 def delete_history():
     data = request.get_json()
     search_folder = data.get('search_folder')
@@ -164,6 +173,7 @@ def delete_history():
     return jsonify({"status": "success", "message": "History item deleted successfully"}), 200
 
 @app.route('/get_excluded', methods=['POST', 'OPTIONS'])
+@cross_origin(origins="*")
 def get_excluded():
       
       if request.method == 'OPTIONS':
@@ -193,6 +203,7 @@ def get_excluded():
       return jsonify({"status": "success", "results": results}), 200
 
 @app.route('/get_excluded_ids', methods=['POST', 'OPTIONS'])
+@cross_origin(origins="*")
 def get_excluded_ids():
       if request.method == 'OPTIONS':
           return jsonify({"status": "success"}), 200
@@ -215,6 +226,7 @@ def get_excluded_ids():
       return jsonify({"status": "success", "results": results}), 200
 
 @app.route('/add_excluded', methods=['POST'])
+@cross_origin(origins="*")
 def add_excluded():
     data = request.get_json()
     search_folder = data.get('search_folder')
@@ -233,6 +245,7 @@ def add_excluded():
     return jsonify({"status": "success", "message": "Excluded item added successfully"}), 200
 
 @app.route('/delete_excluded', methods=['POST'])
+@cross_origin(origins="*")
 def delete_excluded():
     data = request.get_json()
     search_folder = data.get('search_folder')
@@ -248,4 +261,4 @@ def delete_excluded():
     return jsonify({"status": "success", "message": "Excluded item deleted successfully"}), 200
 
 if __name__ == '__main__':
-    socketio.run(app, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="localhost", port=3003, allow_unsafe_werkzeug=True, debug=True)
