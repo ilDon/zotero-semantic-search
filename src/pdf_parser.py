@@ -10,9 +10,13 @@ class PdfParser:
 
   @staticmethod
   def parse_pdf_by_folder(db_instance, file: str, folder_id: str) -> List[str]:
-      file_text = PdfParser.extract_text_from_file(db_instance, file, folder_id)
-      sections = PdfParser.split_and_truncate(file_text)
-      return sections
+      try:
+        file_text = PdfParser.extract_text_from_file(db_instance, file, folder_id)
+        sections = PdfParser.split_and_truncate(file_text)
+        return sections
+      except Exception as e:
+        print(f"\n\nError parsing PDF file: {file}\n")
+        return []
 
   @staticmethod
   def extract_text_from_file(db_instance, file: str, folder_id: str) -> str:
