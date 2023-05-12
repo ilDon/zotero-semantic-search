@@ -6,6 +6,7 @@ import { usePdfText } from '../../providers/pdf-text-provider';
 import { Api } from '../../modules/api';
 import { ResultsItemText } from './results-item-text';
 import { ResultsItemStatusChanger } from './results-item-status-changer';
+import { ResultsItemGeneratePrompt } from './results-item-generate-prompt';
 
 interface IResultsItemProps {
   folderId: string;
@@ -81,18 +82,23 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
                   </div>
                   {!!sectionsText?.[props.result.section_number] && (
                     <ResultsItemText text={sectionsText[props.result.section_number]} />
-                  )}
+                    )}
                   {!sectionsText?.[props.result.section_number] && (
                     <p className="my-4 text-gray-600">Loading...</p>
-                  )}
+                    )}
                   <div className="flex justify-between">
-                    <button
-                      type="button"
-                      className="rounded-md bg-indigo-600 disabled:bg-indigo-500 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                      onClick={handleOpenFile}
-                    >
-                      Open PDF
-                    </button>
+                    <div className="flex items-center justify-start">
+                      <button
+                        type="button"
+                        className="rounded-md bg-indigo-600 disabled:bg-indigo-500 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        onClick={handleOpenFile}
+                        >
+                        Open PDF
+                      </button>
+                      {!!sectionsText?.[props.result.section_number] && (
+                        <ResultsItemGeneratePrompt text={sectionsText?.[props.result.section_number]} />
+                      )}
+                    </div>
                     <ResultsItemStatusChanger
                       resultStatus={resultStatus}
                       result={props.result}
