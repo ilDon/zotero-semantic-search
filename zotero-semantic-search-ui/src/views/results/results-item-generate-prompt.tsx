@@ -6,9 +6,9 @@ interface IResultsItemProps {
 }
 
 const PROMPT = `I am a university professor of law. I am writing a paper. The following is a section of my paper (SECTION), after that there is an excerpt from a paper that might be relevant in relation to what I wrote (EXCERPT). 
-Please assess if the excerpt contains any concept that, directly or indirectly, might be anyhow relevant in relation to the contents of SECTION. 
+Please assess if the excerpt contains any concept that directly support the contents of SECTION. The concepts must be directly relevant.
 If so, please reply by stating which part of the excerpt I should quote and where I should add the footnote in my SECTION. Skip prose.
-If not, please reply: "no relevant text to quote"
+If not, please reply: "no relevant text to quote".
 
 SECTION:
 [QUERY]
