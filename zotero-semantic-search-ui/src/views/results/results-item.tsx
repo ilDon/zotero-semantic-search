@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { ISearchResult, Status, useResults } from './results-provider';
+import { ISearchResult, Status } from './results-provider';
 import { Disclosure, Transition } from '@headlessui/react';
 import { FileNameWithId } from '../../components/file-name-with-id';
 import { usePdfText } from '../../providers/pdf-text-provider';
 import { Api } from '../../modules/api';
 import { ResultsItemText } from './results-item-text';
+import { ResultsItemStatusChanger } from './results-item-status-changer';
 
 interface IResultsItemProps {
   folderId: string;
@@ -17,15 +18,9 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
   const [resultStatus, setResultStatus] = React.useState<ISearchResult['status']>(props.result.status || Status.todo);
   const { getSectionText } = usePdfText();
   const sectionsText = getSectionText(props.folderId);
-  const { updateResultStatus } = useResults();
   
   const handleOpenFile = () => {
     new Api().openFile(props.folderId);
-  };
-
-  const handleSetStatus = (status: ISearchResult['status']) => {
-    setResultStatus(status);
-    updateResultStatus(props.index, status!, props.historyElementId);
   };
 
   const disclosureColors = React.useMemo(() => {
@@ -42,12 +37,21 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
   return (
   <div className="mb-2">
     <Disclosure>
-      <Disclosure.Button className={`flex w-full justify-between rounded-lg px-4 py-2 text-left text-sm font-medium focus:outline-none focus-visible:ring focus-visible:ring-opacity-75 ${disclosureColors}`}>
-        <FileNameWithId
-          fileName={props.result?.file_name}
-          id={props.folderId}
+      <div className="flex w-full items-center justify-center">
+        <Disclosure.Button className={`flex grow justify-between rounded-lg px-4 py-2 text-left text-sm font-medium focus:outline-none focus-visible:ring focus-visible:ring-opacity-75 mr-2 ${disclosureColors}`}>
+          <FileNameWithId
+            fileName={props.result?.file_name}
+            id={props.folderId}
+          />
+        </Disclosure.Button>
+        <ResultsItemStatusChanger
+          resultStatus={resultStatus}
+          result={props.result}
+          index={props.index}
+          historyElementId={props.historyElementId}
+          setResultStatus={setResultStatus}
         />
-      </Disclosure.Button>
+      </div>
 
       <Transition
         enter="transition duration-100 ease-out"
@@ -89,20 +93,14 @@ export const ResultsItem: React.FC<IResultsItemProps> = (props: IResultsItemProp
                     >
                       Open PDF
                     </button>
-                    <select
-                      name="status"
-                      id="status"
-                      className="mt-2 rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                      value={resultStatus}
-                      onChange={(e) => {
-                        handleSetStatus(parseInt(e.target.value));
-                        close();
-                      }}
-                    >
-                      <option value={Status.todo}>Todo</option>
-                      <option value={Status.cited}>Cited</option>
-                      <option value={Status.irrelevant}>Irrelevant</option>
-                    </select>
+                    <ResultsItemStatusChanger
+                      resultStatus={resultStatus}
+                      result={props.result}
+                      index={props.index}
+                      historyElementId={props.historyElementId}
+                      setResultStatus={setResultStatus}
+                      close={close}
+                    />
                   </div>
                 </div>
               </div>
