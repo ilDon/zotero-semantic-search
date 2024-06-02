@@ -1,0 +1,3 @@
+[MESSAGES CONTROL]
+
+disable=missing-module-docstring,missing-class-docstring,missing-function-docstring,line-too-long,cell-var-from-loop
