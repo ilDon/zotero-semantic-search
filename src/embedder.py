@@ -1,3 +1,5 @@
+import os
+import pathlib
 import tensorflow as tf
 import tensorflow_text as text
 import tensorflow_hub as hub
