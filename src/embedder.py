@@ -11,6 +11,6 @@ os.environ['TFHUB_CACHE_DIR'] = str(tf_hub_models_dir)
 
 encoder = hub.KerasLayer("https://tfhub.dev/google/LEALLA/LEALLA-large/1")
 
-def getTextEmbedding(listOfTexts: list):
-    result = encoder(tf.constant(listOfTexts))
+def get_text_embedding(texts: list):
+    result = encoder(tf.constant(texts))
     return result

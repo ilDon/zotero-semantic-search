@@ -10,7 +10,7 @@ from datetime import date
 import asyncio
 
 from src.database import DatabaseHelper
-from src.embedder import getTextEmbedding
+from src.embedder import get_text_embedding
 from src.server import socketio
 
 cached_results = None
@@ -36,7 +36,7 @@ class LibraryFinder:
         return [query_hash, results]
 
     def get_query_embedding(self, query: str) -> np.ndarray:
-        return getTextEmbedding([query]).numpy()
+        return get_text_embedding([query]).numpy()
 
     def fetch_database_rows(self) -> List:
         global cached_results

@@ -7,7 +7,7 @@ import json
 from datetime import date
 
 from src.database import DatabaseHelper
-from src.embedder import getTextEmbedding
+from src.embedder import get_text_embedding
 from src.const import MAX_SECTION_CHARS
 from src.pdf_parser import PdfParser
 
@@ -31,7 +31,7 @@ class LibraryProcessor:
         total_len = len(sections)
         for idx, section in enumerate(sections):
             print(f'\r  - Processing section: {idx + 1}/{total_len}', end='')
-            embeddings = getTextEmbedding([section])
+            embeddings = get_text_embedding([section])
             embedding = embeddings.numpy()
             embedding_as_json_string = json.dumps(embedding.tolist()[0])
             today = date.today().strftime("%Y-%m-%d")

@@ -57,7 +57,7 @@ except Exception as e:
     print(f"Error: {e}")
     exit()
 
-def getTextEmbedding(listOfTexts: list):
+def get_text_embedding(listOfTexts: list):
   return embed(listOfTexts)
 
 encoder = hub.KerasLayer("https://tfhub.dev/google/LEALLA/LEALLA-large/1")
