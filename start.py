@@ -261,4 +261,4 @@ def delete_excluded():
     return jsonify({"status": "success", "message": "Excluded item deleted successfully"}), 200
 
 if __name__ == '__main__':
-    socketio.run(app, host="localhost", port=3003, allow_unsafe_werkzeug=True, debug=True)
+    socketio.run(app, host="0.0.0.0", port=3003, allow_unsafe_werkzeug=True, debug=True)
