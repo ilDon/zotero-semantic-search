@@ -1,0 +1,73 @@
+<vbox id="semsearch-prefpane" class="main-section" onload="SemanticSearchPrefs.init(event)">
+	<html:link rel="localization" href="semantic-search.ftl"/>
+
+	<groupbox>
+		<label><html:h2 data-l10n-id="semsearch-prefs-search"/></label>
+		<html:div class="ss-grid">
+			<html:label for="semsearch-min-similarity" data-l10n-id="semsearch-prefs-min-similarity"/>
+			<html:input id="semsearch-min-similarity" type="number" min="0.1" max="0.99" step="0.01"/>
+			<html:label for="semsearch-max-results" data-l10n-id="semsearch-prefs-max-results"/>
+			<html:input id="semsearch-max-results" type="number" min="10" max="5000" step="10"/>
+		</html:div>
+	</groupbox>
+
+	<groupbox>
+		<label><html:h2 data-l10n-id="semsearch-prefs-indexing"/></label>
+		<html:label class="ss-check">
+			<html:input id="semsearch-auto-index" type="checkbox"/>
+			<html:span data-l10n-id="semsearch-prefs-auto-index"/>
+		</html:label>
+		<html:div class="ss-grid">
+			<html:label for="semsearch-workers" data-l10n-id="semsearch-prefs-workers"/>
+			<html:input id="semsearch-workers" type="number" min="1" max="8" step="1"/>
+		</html:div>
+		<html:div id="semsearch-index-status" class="ss-status"/>
+		<html:div class="ss-buttons">
+			<html:button id="semsearch-index-new" data-l10n-id="semsearch-index-new"/>
+			<html:button id="semsearch-upgrade-legacy" data-l10n-id="semsearch-prefs-upgrade-legacy"/>
+		</html:div>
+	</groupbox>
+
+	<groupbox>
+		<label><html:h2 data-l10n-id="semsearch-prefs-model"/></label>
+		<html:p class="ss-desc" data-l10n-id="semsearch-prefs-model-desc"/>
+		<html:div class="ss-row">
+			<html:span id="semsearch-model-status" class="ss-status"/>
+			<html:button id="semsearch-model-download" data-l10n-id="semsearch-model-download" hidden="true"/>
+		</html:div>
+	</groupbox>
+
+	<groupbox>
+		<label><html:h2 data-l10n-id="semsearch-prefs-mcp"/></label>
+		<html:p class="ss-desc" data-l10n-id="semsearch-prefs-mcp-desc"/>
+		<html:label class="ss-check">
+			<html:input id="semsearch-mcp-enabled" type="checkbox"/>
+			<html:span data-l10n-id="semsearch-prefs-mcp-enable"/>
+		</html:label>
+		<html:div class="ss-code-row">
+			<html:input id="semsearch-mcp-url" type="text" readonly="true"/>
+			<html:button class="ss-copy" data-copy="semsearch-mcp-url" data-l10n-id="semsearch-prefs-copy"/>
+		</html:div>
+		<html:label data-l10n-id="semsearch-prefs-mcp-claude-code"/>
+		<html:div class="ss-code-row">
+			<html:input id="semsearch-mcp-claude-code" type="text" readonly="true"/>
+			<html:button class="ss-copy" data-copy="semsearch-mcp-claude-code" data-l10n-id="semsearch-prefs-copy"/>
+		</html:div>
+		<html:label data-l10n-id="semsearch-prefs-mcp-desktop"/>
+		<html:div class="ss-code-row">
+			<html:textarea id="semsearch-mcp-desktop" rows="7" readonly="true"/>
+			<html:button class="ss-copy" data-copy="semsearch-mcp-desktop" data-l10n-id="semsearch-prefs-copy"/>
+		</html:div>
+	</groupbox>
+
+	<groupbox>
+		<label><html:h2 data-l10n-id="semsearch-prefs-maintenance"/></label>
+		<html:div class="ss-row">
+			<html:span data-l10n-id="semsearch-prefs-database"/>
+			<html:code id="semsearch-db-path"/>
+		</html:div>
+		<html:div class="ss-buttons">
+			<html:button id="semsearch-rebuild-cache" data-l10n-id="semsearch-prefs-rebuild-cache"/>
+		</html:div>
+	</groupbox>
+</vbox>

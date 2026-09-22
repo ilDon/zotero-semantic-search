@@ -1,0 +1,13 @@
+{
+  "name": "zotero-semantic-search",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Zotero plugin: semantic search over the full text of your library, with a local MCP endpoint",
+  "repository": "https://github.com/ilDon/zotero-semantic-search.git",
+  "license": "MIT",
+  "scripts": {
+    "build:wasm": "cd wasm && cargo build --release && cp target/wasm32-unknown-unknown/release/lealla_wasm.wasm ../addon/content/lealla.wasm",
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.js"
+  }
+}

@@ -1,0 +1,58 @@
+#semsearch-prefpane .ss-grid {
+	display: grid;
+	grid-template-columns: max-content 90px;
+	align-items: center;
+	gap: 6px 10px;
+	margin-block: 4px;
+}
+
+#semsearch-prefpane .ss-check {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-block: 4px;
+}
+
+#semsearch-prefpane .ss-desc {
+	margin: 2px 0 8px;
+	color: var(--fill-secondary);
+	line-height: 1.4;
+}
+
+#semsearch-prefpane .ss-status {
+	color: var(--fill-secondary);
+	margin-block: 4px;
+}
+
+#semsearch-prefpane .ss-row,
+#semsearch-prefpane .ss-buttons {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-block: 4px;
+}
+
+#semsearch-prefpane .ss-code-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	margin-block: 2px 8px;
+}
+
+#semsearch-prefpane .ss-code-row input,
+#semsearch-prefpane .ss-code-row textarea {
+	flex: 1;
+	font-family: ui-monospace, Menlo, monospace;
+	font-size: 11.5px;
+	margin: 0;
+}
+
+#semsearch-prefpane button {
+	margin: 0;
+}
+
+#semsearch-prefpane code {
+	font-size: 11.5px;
+	overflow-wrap: anywhere;
+}

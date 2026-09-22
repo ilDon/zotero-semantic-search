@@ -12,7 +12,7 @@
 	else {
 		root.SSLealla = factory();
 	}
-}(typeof self !== 'undefined' ? self : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
 	'use strict';
 
 	const HIDDEN = 256;

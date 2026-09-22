@@ -22,7 +22,7 @@
 	else {
 		root.SSTokenizer = factory();
 	}
-}(typeof self !== 'undefined' ? self : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
 	'use strict';
 
 	const MAX_BYTES_PER_WORD = 100;

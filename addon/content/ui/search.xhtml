@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/"?>
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero.css"?>
+<?xml-stylesheet href="chrome://semantic-search/content/ui/search.css" type="text/css"?>
+<window
+	id="semantic-search-window"
+	windowtype="zotero:semantic-search"
+	persist="screenX screenY width height sizemode"
+	width="1180"
+	height="800"
+	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+
+	<linkset>
+		<html:link rel="localization" href="semantic-search.ftl"/>
+	</linkset>
+
+	<script src="chrome://zotero/content/include.js"/>
+	<script src="chrome://semantic-search/content/ui/search.js"/>
+
+	<keyset>
+		<key id="key_close" key="W" modifiers="accel" oncommand="window.close()"/>
+	</keyset>
+
+	<html:div id="app">
+		<html:aside id="sidebar">
+			<html:div class="sidebar-section sidebar-history">
+				<html:h2 data-l10n-id="semsearch-history"/>
+				<html:input id="history-filter" type="search" data-l10n-id="semsearch-history-filter"/>
+				<html:ul id="history-list" tabindex="0"/>
+			</html:div>
+			<html:div class="sidebar-section sidebar-footer">
+				<html:button id="excluded-button" class="link-button"/>
+				<html:div id="status-panel"/>
+			</html:div>
+		</html:aside>
+
+		<html:main id="main">
+			<html:form id="query-form">
+				<html:textarea id="query" rows="4" data-l10n-id="semsearch-query-placeholder" data-l10n-attrs="placeholder"/>
+				<html:div class="query-controls">
+					<html:button id="search-button" type="submit" class="primary" data-l10n-id="semsearch-search"/>
+					<html:label class="control">
+						<html:span data-l10n-id="semsearch-threshold"/>
+						<html:input id="threshold" type="number" min="0.1" max="0.99" step="0.01"/>
+					</html:label>
+					<html:label class="control">
+						<html:input id="group-toggle" type="checkbox"/>
+						<html:span data-l10n-id="semsearch-group"/>
+					</html:label>
+					<html:select id="status-filter">
+						<html:option value="all" data-l10n-id="semsearch-filter-all"/>
+						<html:option value="hide-irrelevant" data-l10n-id="semsearch-filter-hide-irrelevant"/>
+						<html:option value="0" data-l10n-id="semsearch-filter-todo"/>
+						<html:option value="1" data-l10n-id="semsearch-filter-cited"/>
+						<html:option value="2" data-l10n-id="semsearch-filter-irrelevant"/>
+					</html:select>
+					<html:span class="hint">⌘↩</html:span>
+				</html:div>
+			</html:form>
+
+			<html:div id="notice" hidden="true"/>
+
+			<html:div id="results-header" hidden="true">
+				<html:div id="results-summary"/>
+				<html:div class="header-actions">
+					<html:button id="rerun-button" data-l10n-id="semsearch-rerun" hidden="true"/>
+					<html:button id="copy-list-button" data-l10n-id="semsearch-copy-list"/>
+					<html:button id="collection-button" data-l10n-id="semsearch-save-collection"/>
+				</html:div>
+			</html:div>
+
+			<html:div id="results" tabindex="-1"/>
+		</html:main>
+	</html:div>
+</window>
