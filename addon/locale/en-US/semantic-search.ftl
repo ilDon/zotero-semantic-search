@@ -8,6 +8,23 @@ semsearch-menu-reindex = Re-index (full-text passages)
 semsearch-menu-exclude = Exclude from Semantic Search
 semsearch-menu-include = Include in Semantic Search
 
+semsearch-menuitem-open =
+    .label = Semantic Search…
+semsearch-menuitem-item =
+    .label = Semantic Search
+semsearch-menuitem-find-similar =
+    .label = Find Similar Documents
+semsearch-menuitem-search-abstract =
+    .label = Search Passages Like This Abstract
+semsearch-menuitem-index =
+    .label = Index Now
+semsearch-menuitem-reindex =
+    .label = Re-index (full-text passages)
+semsearch-menuitem-exclude =
+    .label = Exclude from Semantic Search
+semsearch-menuitem-include =
+    .label = Include in Semantic Search
+
 semsearch-pane-header =
     .label = Semantic Search
 semsearch-pane-sidenav =
@@ -41,7 +58,7 @@ semsearch-prefs-copy = Copy
 semsearch-prefs-maintenance = Maintenance
 semsearch-prefs-rebuild-cache = Rebuild vector cache
 semsearch-prefs-upgrade-legacy = Re-index documents of the previous version…
-semsearch-prefs-upgrade-legacy-confirm = { $count } documents were indexed by the previous version, which only embedded the beginning of every 2500-character section. Re-indexing embeds their full text and stores passage text and pages, but takes a long time and changes their passages (results saved in the history for them may no longer point to the right passage). Continue?
+semsearch-prefs-upgrade-legacy-confirm = { $count } documents were indexed by the previous version, which only embedded the beginning of every 2500-character section. Re-indexing embeds their full text and stores passage text and pages, but takes many hours, produces about 5 times more passages (the database and memory use grow accordingly) and changes their passages (results saved in the history for them may no longer point to the right passage). Continue?
 
 semsearch-model-missing = The embedding model (590 MB) must be downloaded once before searching.
 semsearch-model-download = Download model
@@ -50,7 +67,8 @@ semsearch-model-verifying = Verifying download…
 semsearch-model-ready = Model ready
 semsearch-model-error = Download failed: { $error }
 
-semsearch-query-placeholder = Write a concept, a sentence or a paragraph from your text…
+semsearch-query-placeholder =
+    .placeholder = Write a concept, a sentence or a paragraph from your text…
 semsearch-search = Search
 semsearch-rerun = Search again
 semsearch-threshold = Min. similarity
@@ -107,6 +125,7 @@ semsearch-locate = Find exact passage
 semsearch-locating = Locating…
 semsearch-page = p. { $page }
 semsearch-also-in = Identical PDF also in { $count } other items
+semsearch-matched = matches: “{ $text }”
 semsearch-copied = Copied
 semsearch-missing-item = Item no longer in the library
 

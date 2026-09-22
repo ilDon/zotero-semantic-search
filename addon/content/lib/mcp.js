@@ -44,7 +44,7 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 					limit: { type: 'integer', minimum: 1, maximum: 100, default: 10, description: 'Maximum number of passages.' },
 					min_similarity: { type: 'number', minimum: 0, maximum: 1, description: 'Minimum cosine similarity (default 0.4).' },
 					group_by_item: { type: 'boolean', default: false, description: 'Return at most one passage (the best) per document.' },
-					use_cache: { type: 'boolean', default: true, description: 'Reuse saved results if this exact query was searched before.' },
+					use_cache: { type: 'boolean', default: false, description: 'Return the results saved in the user\'s search history if this exact query was searched before in Zotero.' },
 				},
 				required: ['query'],
 			},

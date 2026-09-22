@@ -20,6 +20,8 @@ window {
 }
 
 #app {
+	background: var(--material-background, Canvas);
+	color: var(--fill-primary, CanvasText);
 	display: flex;
 	flex: 1;
 	min-height: 0;
@@ -408,6 +410,12 @@ progress {
 .status-select {
 	flex: none;
 	margin: 0;
+}
+
+.matched {
+	font-size: 11.5px;
+	color: var(--ss-muted);
+	font-style: italic;
 }
 
 .passage {

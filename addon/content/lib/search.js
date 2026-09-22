@@ -66,8 +66,16 @@ var SSSearch = {
 		await this.ensureReady();
 		let minSim = opts.minSimilarity !== undefined ? opts.minSimilarity : this.minSimilarity;
 		let limit = opts.limit || this.maxResults;
-		let qvec = await SSEmbedder.embedOne(query);
-		let results = await this.rank(qvec, minSim, limit, opts.keys ? new Set(opts.keys) : null);
+		let { vectors: qvecs, segments } = await SSEmbedder.embedQuery(query);
+		let results = await this.rank(qvecs, minSim, limit, opts.keys ? new Set(opts.keys) : null);
+		// Long queries: remember which part of the query each passage matches
+		// (segment 0 is the whole query as the original app embedded it)
+		if (segments.length > 1) {
+			for (let r of results) {
+				if (r.segment > 0) r.matched = this.excerpt(segments[r.segment], 90);
+				delete r.segment;
+			}
+		}
 		// Keep the statuses the user already set on a previous run of this query
 		let previous = opts.useCache === false ? await SSStore.getHistory(id) : null;
 		if (previous) {
@@ -78,17 +86,42 @@ var SSSearch = {
 			}
 		}
 		if (opts.save !== false && !opts.keys) {
-			await SSStore.saveHistory(id, query, qvec, results);
+			await SSStore.saveHistory(id, query, this.meanVector(qvecs), results);
 		}
 		return { id, query, date: SSStore.today(), results, fromCache: false };
 	},
 
+	excerpt(text, n) {
+		text = text.replace(/\s+/g, ' ').trim();
+		return text.length > n ? text.slice(0, n).replace(/\s+\S*$/, '') + '…' : text;
+	},
+
+	meanVector(vecs) {
+		let m = new Float32Array(256);
+		for (let v of vecs) {
+			for (let k = 0; k < 256; k++) m[k] += v[k];
+		}
+		let n = Math.sqrt(m.reduce((a, x) => a + x * x, 0)) || 1;
+		return m.map(x => x / n);
+	},
+
 	/**
 	 * Exact ranking: approximate scan, then exact cosine on the candidates.
+	 * With several query vectors (a long query split into segments) a passage
+	 * scores its best match among them.
+	 * @param {Float32Array|Float32Array[]} qvecs
 	 * @returns {Object[]} history-format results, best first
 	 */
-	async rank(qvec, minSim, limit, onlyKeys) {
-		let cands = SSVectorIndex.candidates(qvec, minSim - this.APPROX_MARGIN, 50000, onlyKeys);
+	async rank(qvecs, minSim, limit, onlyKeys) {
+		if (!Array.isArray(qvecs)) qvecs = [qvecs];
+		let best = new Map(); // index -> approx score
+		for (let q of qvecs) {
+			for (let c of SSVectorIndex.candidates(q, minSim - this.APPROX_MARGIN, 50000, onlyKeys)) {
+				let prev = best.get(c.i);
+				if (prev === undefined || c.score > prev) best.set(c.i, c.score);
+			}
+		}
+		let cands = [...best.entries()].map(([i, score]) => ({ i, score })).sort((a, b) => b.score - a.score);
 		if (!cands.length) return [];
 		// Only the candidates that can still make the top `limit` need exact scores
 		if (cands.length > limit) {
@@ -99,28 +132,36 @@ var SSSearch = {
 		}
 		let entries = cands.map(c => SSVectorIndex.entry(c.i));
 		let vectors = await SSStore.getVectors(entries.map(e => e.rowid));
-		let qn = 0;
-		for (let k = 0; k < 256; k++) qn += qvec[k] * qvec[k];
-		qn = Math.sqrt(qn);
+		let qnorms = qvecs.map(q => Math.sqrt(q.reduce((a, x) => a + x * x, 0)) || 1);
 		let results = [];
 		for (let e of entries) {
 			let v = vectors.get(e.rowid);
 			if (!v || !e.key) continue;
-			let d = 0;
 			let vn = 0;
-			for (let k = 0; k < 256; k++) {
-				d += qvec[k] * v[k];
-				vn += v[k] * v[k];
+			for (let k = 0; k < 256; k++) vn += v[k] * v[k];
+			vn = Math.sqrt(vn) || 1;
+			let sim = -2;
+			let segment = 0;
+			for (let j = 0; j < qvecs.length; j++) {
+				let q = qvecs[j];
+				let d = 0;
+				for (let k = 0; k < 256; k++) d += q[k] * v[k];
+				d /= qnorms[j] * vn;
+				if (d > sim) {
+					sim = d;
+					segment = j;
+				}
 			}
-			let sim = d / (qn * Math.sqrt(vn) || 1);
 			if (sim < minSim) continue;
-			results.push({
+			let r = {
 				similarity: sim,
 				folder_id: e.key,
 				file_name: e.fileName,
 				section_number: e.section,
 				rowid: e.rowid,
-			});
+			};
+			if (qvecs.length > 1) r.segment = segment;
+			results.push(r);
 		}
 		results.sort((a, b) => b.similarity - a.similarity);
 		// The legacy database contains a few duplicated sections: keep the best one.

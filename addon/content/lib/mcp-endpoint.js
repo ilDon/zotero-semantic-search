@@ -112,6 +112,7 @@ var SSMcpEndpoint = {
 			zotero_open_pdf: `zotero://open-pdf/library/items/${r.folder_id}${page ? '?page=' + page : ''}`,
 			in_library: !r.missing,
 			...(r.duplicates ? { identical_copies_in: r.duplicates } : {}),
+			...(r.matched ? { matches_query_part: r.matched } : {}),
 		};
 	},
 
@@ -121,7 +122,8 @@ var SSMcpEndpoint = {
 			let res = await SSSearch.search(args.query, {
 				// Short LLM queries score lower than the paragraph-long queries of the UI
 				minSimilarity: typeof args.min_similarity === 'number' ? args.min_similarity : SSMcpEndpoint.DEFAULT_MIN_SIMILARITY,
-				useCache: args.use_cache !== false,
+				// Saved UI searches use the stricter UI threshold: only reuse them on request
+				useCache: args.use_cache === true,
 				// Searches made by an LLM do not clutter the user's history
 				save: false,
 			});

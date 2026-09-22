@@ -8,6 +8,23 @@ semsearch-menu-reindex = Reindicizza (passaggi a testo completo)
 semsearch-menu-exclude = Escludi dalla ricerca semantica
 semsearch-menu-include = Includi nella ricerca semantica
 
+semsearch-menuitem-open =
+    .label = Ricerca semantica…
+semsearch-menuitem-item =
+    .label = Ricerca semantica
+semsearch-menuitem-find-similar =
+    .label = Trova documenti simili
+semsearch-menuitem-search-abstract =
+    .label = Cerca passaggi simili all’abstract
+semsearch-menuitem-index =
+    .label = Indicizza ora
+semsearch-menuitem-reindex =
+    .label = Reindicizza (passaggi a testo completo)
+semsearch-menuitem-exclude =
+    .label = Escludi dalla ricerca semantica
+semsearch-menuitem-include =
+    .label = Includi nella ricerca semantica
+
 semsearch-pane-header =
     .label = Ricerca semantica
 semsearch-pane-sidenav =
@@ -41,7 +58,7 @@ semsearch-prefs-copy = Copia
 semsearch-prefs-maintenance = Manutenzione
 semsearch-prefs-rebuild-cache = Ricostruisci la cache dei vettori
 semsearch-prefs-upgrade-legacy = Reindicizza i documenti della versione precedente…
-semsearch-prefs-upgrade-legacy-confirm = { $count } documenti sono stati indicizzati dalla versione precedente, che codificava solo l’inizio di ogni sezione di 2500 caratteri. La reindicizzazione codifica tutto il testo e salva testo e pagina dei passaggi, ma richiede molto tempo e cambia i loro passaggi (i risultati salvati nella cronologia per questi documenti potrebbero non puntare più al passaggio giusto). Continuare?
+semsearch-prefs-upgrade-legacy-confirm = { $count } documenti sono stati indicizzati dalla versione precedente, che codificava solo l’inizio di ogni sezione di 2500 caratteri. La reindicizzazione codifica tutto il testo e salva testo e pagina dei passaggi, ma richiede molte ore, produce circa 5 volte più passaggi (database e memoria usata crescono di conseguenza) e cambia i loro passaggi (i risultati salvati nella cronologia per questi documenti potrebbero non puntare più al passaggio giusto). Continuare?
 
 semsearch-model-missing = Prima di cercare occorre scaricare una volta il modello di embedding (590 MB).
 semsearch-model-download = Scarica il modello
@@ -50,7 +67,8 @@ semsearch-model-verifying = Verifica del download…
 semsearch-model-ready = Modello pronto
 semsearch-model-error = Download non riuscito: { $error }
 
-semsearch-query-placeholder = Scrivi un concetto, una frase o un paragrafo del tuo testo…
+semsearch-query-placeholder =
+    .placeholder = Scrivi un concetto, una frase o un paragrafo del tuo testo…
 semsearch-search = Cerca
 semsearch-rerun = Ripeti la ricerca
 semsearch-threshold = Similarità min.
@@ -107,6 +125,7 @@ semsearch-locate = Trova il passaggio esatto
 semsearch-locating = Ricerca del passaggio…
 semsearch-page = p. { $page }
 semsearch-also-in = PDF identico anche in altri { $count } elementi
+semsearch-matched = corrisponde a: «{ $text }»
 semsearch-copied = Copiato
 semsearch-missing-item = Elemento non più presente nella biblioteca
 

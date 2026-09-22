@@ -143,6 +143,31 @@ var SSEmbedder = {
 		return (await this.embed([text]))[0];
 	},
 
+	/**
+	 * Embed a search query; long queries give one vector per segment.
+	 * @returns {Promise<{vectors: Float32Array[], segments: string[]}>}
+	 */
+	async embedQuery(text) {
+		let w = await this._queryWorker();
+		w.busy = true;
+		try {
+			let m = await this._call(w, { type: 'query', text });
+			let vectors = [];
+			for (let i = 0; i < m.segments.length; i++) {
+				vectors.push(m.vectors.subarray(i * 256, (i + 1) * 256));
+			}
+			return { vectors, segments: m.segments };
+		}
+		finally {
+			w.busy = false;
+			w.lastUsed = Date.now();
+			this._scheduleIdle(w, this.QUERY_IDLE_MS, () => {
+				this._terminate(w);
+				if (this._query === w) this._query = null;
+			});
+		}
+	},
+
 	async _acquire() {
 		for (;;) {
 			this._pool = this._pool.filter((w) => !w.dead);

@@ -16,9 +16,6 @@ var SemanticSearchPlugin = {
 			'search', 'indexer', 'mcp-endpoint', 'ui']) {
 			Services.scriptloader.loadSubScript(rootURI + `content/lib/${f}.js`);
 		}
-		if (Zotero.Prefs.get('extensions.semantic-search.dev', true)) {
-			Services.scriptloader.loadSubScript(rootURI + 'content/dev.js');
-		}
 
 		// Public API used by the UI windows (they run in their own globals)
 		Zotero.SemanticSearch = {
@@ -77,9 +74,6 @@ var SemanticSearchPlugin = {
 		}
 		catch (e) {
 			Zotero.logError(e);
-		}
-		if (Zotero.Server.Endpoints['/semantic-search/dev/eval']) {
-			delete Zotero.Server.Endpoints['/semantic-search/dev/eval'];
 		}
 		delete Zotero.SemanticSearch;
 	},

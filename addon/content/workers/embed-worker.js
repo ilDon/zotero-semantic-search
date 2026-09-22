@@ -3,6 +3,7 @@
  * word-embedding row cache. Messages:
  *   {type:'init', modelPath, vocabPath, wasmURL, extraURL}  -> {type:'ready'}
  *   {type:'embed', id, texts}                                -> {id, vectors}
+ *   {type:'query', id, text}                                 -> {id, vectors, segments}
  *   {type:'document', id, pages}                             -> progress..., {id, chunks, vectors}
  *   {type:'cancel', id}
  */
@@ -46,6 +47,22 @@ async function embedTexts(texts) {
 	return out;
 }
 
+/**
+ * Queries longer than the model window (128 tokens) are split into sentence-aligned
+ * segments; shorter ones are embedded verbatim (exactly like the original app).
+ */
+async function embedQuery(text) {
+	const pieces = model.tokenizer.encode(text, 100000).length - 2;
+	let segments = [text];
+	if (pieces > 126) {
+		// Keep the verbatim (truncated) query first: results are then a superset of
+		// what the original app returned, plus matches for the rest of the text
+		segments = segments.concat(SSChunker.chunkPages([text], model.tokenizer).map(c => c.text));
+	}
+	const vectors = await embedTexts(segments);
+	return { vectors, segments };
+}
+
 async function processDocument(id, pages) {
 	const chunks = SSChunker.chunkPages(pages, model.tokenizer);
 	const vectors = new Float32Array(chunks.length * SSLealla.HIDDEN);
@@ -76,6 +93,11 @@ self.onmessage = async (event) => {
 			case 'embed': {
 				const vectors = await embedTexts(msg.texts);
 				postMessage({ type: 'result', id: msg.id, vectors }, [vectors.buffer]);
+				break;
+			}
+			case 'query': {
+				const { vectors, segments } = await embedQuery(msg.text);
+				postMessage({ type: 'result', id: msg.id, vectors, segments }, [vectors.buffer]);
 				break;
 			}
 			case 'document': {

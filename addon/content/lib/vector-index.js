@@ -343,6 +343,8 @@ var SSVectorIndex = {
 	},
 
 	_saveTimer: null,
+	// The cache only speeds up loading (the database is the source of truth), so it
+	// is written at most every few minutes, when indexing ends and at shutdown
 	scheduleSave() {
 		this._dirty = true;
 		if (this._saveTimer) return;
@@ -354,7 +356,7 @@ var SSVectorIndex = {
 			catch (e) {
 				Zotero.logError(e);
 			}
-		}, 30000);
+		}, 5 * 60 * 1000);
 	},
 
 	async flush() {
@@ -382,6 +384,8 @@ var SSVectorIndex = {
 	// ---------------------------------------------------------------- updates
 
 	async addDocument(key, fileName, rowids, vectors) {
+		// Rows inserted while the index is loading were not in the rowid snapshot
+		if (this._loading) await this._loading.catch(() => {});
 		if (!this.loaded) return;
 		this.removeDocument(key);
 		await this._ensureCapacity(rowids.length);

@@ -114,7 +114,7 @@ var SSUI = {
 			target: 'main/menubar/tools',
 			menus: [{
 				menuType: 'menuitem',
-				l10nID: 'semsearch-menu-open',
+				l10nID: 'semsearch-menuitem-open',
 				icon: this.ICON,
 				onCommand: () => this.openWindow(),
 			}],
@@ -128,7 +128,7 @@ var SSUI = {
 			target: 'main/library/item',
 			menus: [{
 				menuType: 'submenu',
-				l10nID: 'semsearch-menu-item',
+				l10nID: 'semsearch-menuitem-item',
 				icon: this.ICON,
 				onShowing: (ev, ctx) => {
 					ctx.setVisible(selected(ctx).length > 0);
@@ -136,7 +136,7 @@ var SSUI = {
 				menus: [
 					{
 						menuType: 'menuitem',
-						l10nID: 'semsearch-menu-find-similar',
+						l10nID: 'semsearch-menuitem-find-similar',
 						onShowing: (ev, ctx) => ctx.setEnabled(selected(ctx).length === 1),
 						onCommand: (ev, ctx) => {
 							let a = selected(ctx)[0];
@@ -145,7 +145,7 @@ var SSUI = {
 					},
 					{
 						menuType: 'menuitem',
-						l10nID: 'semsearch-menu-search-abstract',
+						l10nID: 'semsearch-menuitem-search-abstract',
 						onShowing: (ev, ctx) => {
 							let items = ctx.items || [];
 							ctx.setVisible(items.length === 1 && items[0].isRegularItem()
@@ -159,22 +159,22 @@ var SSUI = {
 					{ menuType: 'separator' },
 					{
 						menuType: 'menuitem',
-						l10nID: 'semsearch-menu-index',
+						l10nID: 'semsearch-menuitem-index',
 						onCommand: (ev, ctx) => SSIndexer.indexItems(selected(ctx)).catch(e => this.alertError(e)),
 					},
 					{
 						menuType: 'menuitem',
-						l10nID: 'semsearch-menu-reindex',
+						l10nID: 'semsearch-menuitem-reindex',
 						onCommand: (ev, ctx) => SSIndexer.indexItems(selected(ctx), { force: true }).catch(e => this.alertError(e)),
 					},
 					{
 						menuType: 'menuitem',
-						l10nID: 'semsearch-menu-exclude',
+						l10nID: 'semsearch-menuitem-exclude',
 						onCommand: (ev, ctx) => SSIndexer.exclude(selected(ctx).map(a => a.key)).catch(e => this.alertError(e)),
 					},
 					{
 						menuType: 'menuitem',
-						l10nID: 'semsearch-menu-include',
+						l10nID: 'semsearch-menuitem-include',
 						onCommand: (ev, ctx) => SSIndexer.include(selected(ctx).map(a => a.key)).catch(e => this.alertError(e)),
 					},
 				],

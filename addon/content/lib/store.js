@@ -283,6 +283,15 @@ var SSStore = {
 		return rowids;
 	},
 
+	/** Remember where a legacy section was found in the PDF (see SSPassages.locateLegacy) */
+	async setLegacyLocation(rowid, text, page, charStart) {
+		let conn = await this.open();
+		await conn.execute(
+			'UPDATE embeddings SET chunk_text = ?, page = ?, char_start = ? WHERE rowid = ? AND scheme IS NULL',
+			[text, page, charStart, rowid]
+		);
+	},
+
 	async deleteDocument(id) {
 		let conn = await this.open();
 		await conn.execute('DELETE FROM embeddings WHERE id = ?', [id]);

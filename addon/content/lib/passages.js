@@ -17,18 +17,22 @@ var SSPassages = {
 	_fulltext: new Map(), // key -> Promise<{pages, full, pageStarts}>
 	FULLTEXT_CACHE: 12,
 
-	/** Find an attachment item by key in any library */
+	isTrashed(item) {
+		return !!(item.deleted || (item.parentItem && item.parentItem.deleted));
+	},
+
+	/** Find an item by key in any library (items in the trash count as missing) */
 	async getItemByKey(key) {
 		let cached = this._itemIDByKey.get(key);
 		if (cached) {
 			let item = Zotero.Items.get(cached);
-			if (item && !item.deleted) return item;
+			if (item) return this.isTrashed(item) ? null : item;
 		}
 		for (let lib of Zotero.Libraries.getAll()) {
 			let item = await Zotero.Items.getByLibraryAndKeyAsync(lib.libraryID, key);
 			if (item) {
 				this._itemIDByKey.set(key, item.id);
-				return item;
+				return this.isTrashed(item) ? null : item;
 			}
 		}
 		return null;
@@ -138,7 +142,8 @@ var SSPassages = {
 			Zotero.debug('Semantic Search: fulltext cache not usable: ' + e);
 		}
 		if (opts.fast) return null;
-		let res = await Zotero.PDFWorker.getFullText(item.id, null);
+		// isPriority: user-facing requests jump ahead of background indexing
+		let res = await Zotero.PDFWorker.getFullText(item.id, null, true);
 		let raw = res && res.text ? res.text : '';
 		try {
 			await IOUtils.makeDirectory(this.textCacheDir, { createAncestors: true, ignoreExisting: true });
@@ -313,8 +318,9 @@ var SSPassages = {
 			if (item) Object.assign(r, this.describeItem(item));
 			else r.title = r.file_name;
 			let ci = r.rowid !== undefined ? info.get(r.rowid) : null;
-			if (ci && ci.scheme === 2) {
-				r.scheme = 2;
+			if (ci && (ci.scheme === 2 || ci.text)) {
+				// new passages, or legacy sections already located precisely
+				r.scheme = ci.scheme || 1;
 				r.text = ci.text;
 				r.page = ci.page;
 				r.approximate = false;

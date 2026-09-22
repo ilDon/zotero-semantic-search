@@ -531,10 +531,11 @@ var SemanticSearchWindow = {
 					r.duplicates ? this.el('div', { class: 'dup-note', l10n: ['semsearch-also-in', { count: r.duplicates.length }] }) : null),
 				status);
 		}
+		let matched = r.matched ? this.el('div', { class: 'matched', l10n: ['semsearch-matched', { text: r.matched }] }) : null;
 		let passage = this.el('blockquote', { class: 'passage', onclick: () => passage.classList.toggle('expanded') });
 		let approx = this.el('div', { class: 'approx', hidden: true });
 		let actions = this.el('div', { class: 'actions' });
-		card.append(head, passage, approx, actions);
+		card.append(head, matched || '', passage, approx, actions);
 		this._fillCard(r, card, passage, approx, actions);
 		if (r.text === undefined && !r.missing) {
 			passage.classList.add('loading');
@@ -647,6 +648,7 @@ var SemanticSearchWindow = {
 		if (r.status !== undefined) o.status = r.status;
 		if (r.rowid !== undefined) o.rowid = r.rowid;
 		if (r.duplicates) o.duplicates = r.duplicates;
+		if (r.matched) o.matched = r.matched;
 		return o;
 	},
 
@@ -660,6 +662,7 @@ var SemanticSearchWindow = {
 			r.text = res.text;
 			r.page = res.page;
 			r.approximate = false;
+			await this.S.store.setLegacyLocation(r.rowid, res.text, res.page, res.charStart);
 		}
 	},
 
@@ -675,9 +678,34 @@ var SemanticSearchWindow = {
 	async openPDF(r) {
 		if (!r.attachmentID) return;
 		let location = Number.isInteger(r.page) ? { pageIndex: r.page } : undefined;
-		await Zotero.Reader.open(r.attachmentID, location);
+		let reader = await Zotero.Reader.open(r.attachmentID, location);
 		let win = Zotero.getMainWindow();
 		if (win) win.focus();
+		if (reader && r.text && !r.approximate) this._findInReader(reader, r.text);
+	},
+
+	/**
+	 * Highlight the passage in Zotero's reader by searching its first words.
+	 * Uses the reader's internal find state: best effort, silently skipped if the
+	 * reader implementation changes.
+	 */
+	async _findInReader(reader, text) {
+		try {
+			if (reader._initPromise) await reader._initPromise;
+			let internal = null;
+			for (let i = 0; i < 20 && !internal; i++) {
+				internal = reader._internalReader;
+				if (!internal) await Zotero.Promise.delay(250);
+			}
+			let prev = internal && internal._state && internal._state.primaryViewFindState;
+			if (!prev || typeof internal._handleFindStateChange !== 'function') return;
+			await Zotero.Promise.delay(500);
+			let query = text.replace(/\s+/g, ' ').trim().split(' ').slice(0, 7).join(' ');
+			internal._handleFindStateChange(true, { ...prev, popupOpen: true, active: true, query, result: null });
+		}
+		catch (e) {
+			Zotero.debug('Semantic Search: cannot highlight passage in reader: ' + e);
+		}
 	},
 
 	async copyPrompt(r, button) {
