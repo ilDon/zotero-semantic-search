@@ -21,13 +21,15 @@ Everything runs inside Zotero: no Python, no local server to start, no separate 
 
 ## Installation
 
-1. Build the plugin (or use a released `.xpi`):
+1. Download the `.xpi` of the [latest release](https://github.com/ilDon/zotero-semantic-search/releases/latest), or build it:
    ```bash
    node scripts/build.mjs
    ```
    This creates `build/zotero-semantic-search-<version>.xpi`.
 2. In Zotero: Tools → Plugins → gear icon → *Install Plugin From File…* → choose the `.xpi`.
 3. Open Tools → Semantic Search… The first time, the plugin downloads the embedding model (590 MB, from Hugging Face, checksum-verified) into your Zotero profile.
+
+Once installed, the plugin updates itself: Zotero periodically checks the latest release (Tools → Plugins → gear icon → *Check for Updates* to check now).
 
 The plugin uses `file_embeddings.db` in your Zotero data directory (next to `zotero.sqlite`) — exactly where the original app kept it. If it does not exist it is created; the path can be changed in the preferences.
 
@@ -97,5 +99,15 @@ node scripts/build.mjs --wasm # rebuild lealla.wasm (Rust, wasm32-unknown-unknow
 ```
 
 Model-dependent tests need `.model/model.safetensors` and `.model/vocab.txt` (or `MODEL_DIR`). `tools/tf_oracle.py` runs the original TF Hub model to produce ground truth; `tools/reference_model.py` is a readable PyTorch version of the graph.
+
+### Releasing
+
+Push a tag `vX.Y.Z` on a commit of `master`:
+
+```bash
+git tag v2.2.0 && git push origin v2.2.0
+```
+
+The `Release` workflow runs the tests, builds the XPI with the version taken from the tag, and publishes a GitHub release with the XPI and `updates.json`. Installed plugins read that file (`update_url` = `releases/latest/download/updates.json`) and update automatically. The `updates.json` at the repository root is only read by versions ≤ 2.1.0, which used the old update URL.
 
 To run the plugin from source, put a file named `semantic-search@ildon.github.io` containing the absolute path of `addon/` in your Zotero profile's `extensions/` folder.
