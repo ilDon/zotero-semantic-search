@@ -1,68 +1,87 @@
 # Zotero Semantic Search
 
-A Zotero 7–10 plugin that searches the **full text of the PDFs in your library by meaning**, not by keywords — and lets AI assistants on your computer do the same through a local **MCP** endpoint.
+**Find the passages in your PDFs that *mean* what you are looking for — not just the ones that contain your keywords.**
 
-Write a concept, a sentence or a whole paragraph of your draft; the plugin returns the passages of your PDFs whose meaning is closest, ranked by cosine similarity, linked to their Zotero items and pages.
+[![Latest release](https://img.shields.io/github/v/release/ilDon/zotero-semantic-search?label=download)](https://github.com/ilDon/zotero-semantic-search/releases/latest)
+![Zotero 7–10](https://img.shields.io/badge/Zotero-7%20%E2%80%93%2010-cc2936)
+![100% local](https://img.shields.io/badge/runs-100%25%20locally-2ea44f)
 
-Everything runs inside Zotero: no Python, no local server to start, no separate web app.
+Paste a paragraph from your draft and get back the pages of your library that support it, ranked by how close they are in meaning — in any language, straight inside Zotero. It also works for your AI assistant, through a built-in MCP server.
 
-> Version 2 is a complete rewrite of the original Python + React app (kept on the `archive/python-react-app` branch). **Databases built by the original app keep working as they are.**
+![Semantic Search window](docs/images/search.png)
+
+---
+
+## Why semantic search?
+
+Keyword search only finds the words you type. If your source says *"deep learning models cannot be inspected"* and you search for *"opacity of neural networks"*, it finds nothing.
+
+Semantic search compares **meanings**. Every passage of every PDF in your library is turned into a vector that captures what it says, and your query is compared against all of them. You get relevant passages even when they use different words, or a different language.
 
 ## Features
 
-- **Semantic search window** (Tools → Semantic Search…, or <kbd>⌘/Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd>): results with similarity, passage text, page; open the PDF at the page, show the item in the library, copy a citation, or copy the "how does this excerpt support my text" prompt of the original app.
-- **Filter results by item type** (book, journal article, …; multiple selection): works on the results already found, including saved searches.
-- **OCR for PDFs without text**: documents excluded as *no text* get a *Run OCR* button (in the excluded list and in the item pane). It opens your default terminal and runs [ocrmypdf](https://ocrmypdf.readthedocs.io) (must be installed, e.g. `brew install ocrmypdf`) with `--force-ocr` and the languages set in the preferences (default `ita+eng`); when it finishes, the original PDF is replaced in place (same folder and name) and the document is re-indexed automatically, even if Zotero was restarted in the meantime. (`--force-ocr` rather than `--skip-text`, which ocrmypdf does not allow together: *skip-text* would skip every page carrying even a watermark.)
-- **Saved searches**: every search is stored in the history (as before) and repeated searches are answered instantly from it. Mark results as *To review / Cited / Irrelevant*; the marks are saved.
-- **Incremental indexing**: new PDFs are detected and indexed automatically in the background; only what is not yet indexed (or excluded) is processed.
-- **Zotero integration**: an item-pane section with the index status of each PDF and its most similar documents; context-menu actions (find similar documents, index/re-index, exclude/include); save results as a collection.
-- **MCP server** for AI assistants (Claude Code, Claude Desktop, …): `semantic_search`, `get_passage`, `get_item`, `find_similar_items`, `index_status`, `list_saved_searches`.
-- Italian and English interface.
+- 🔎 **Search by meaning** across the full text of all your PDFs. Queries can be a phrase, a sentence or a whole paragraph.
+- 🌍 **Multilingual**: 109 languages, including across languages (an English query finds Italian, Spanish or German passages).
+- ⚡ **Fast**: searching half a million passages takes about 0.15 s.
+- 📌 **Wired into Zotero**: every result is linked to its Zotero item. Open the PDF at the right page, jump to the item in your library, copy a formatted citation, or save the results as a collection.
+- 🏷️ **Filter by item type**: books, journal articles, book sections, theses… any combination, on new and saved searches.
+- 🗂️ **Saved searches and review workflow**: every search is kept in the sidebar and reopens instantly. Mark each passage as *To review*, *Cited* or *Irrelevant*.
+- 🔄 **Always up to date**: new PDFs are indexed automatically in the background.
+- 🧭 **Similar documents**: the item pane shows which documents in your library are closest in content to the selected one.
+- 📄 **OCR for scanned PDFs**: PDFs without a text layer can be OCRed with one click (via [ocrmypdf](https://ocrmypdf.readthedocs.io)) and then indexed.
+- 🤖 **For AI assistants**: a local MCP server lets Claude Code, Claude Desktop or any MCP client search your library and cite from it.
+- 🔒 **Private**: the model runs inside Zotero. Your PDFs and queries never leave your computer.
+- ⬆️ **Updates itself** from GitHub releases.
 
-## Installation
+## Getting started
 
-1. Download the `.xpi` of the [latest release](https://github.com/ilDon/zotero-semantic-search/releases/latest), or build it:
-   ```bash
-   node scripts/build.mjs
-   ```
-   This creates `build/zotero-semantic-search-<version>.xpi`.
-2. In Zotero: Tools → Plugins → gear icon → *Install Plugin From File…* → choose the `.xpi`.
-3. Open Tools → Semantic Search… The first time, the plugin downloads the embedding model (590 MB, from Hugging Face, checksum-verified) into your Zotero profile.
+1. **Install**: download the `.xpi` from the [latest release](https://github.com/ilDon/zotero-semantic-search/releases/latest). In Zotero go to *Tools → Plugins*, click the gear icon, choose *Install Plugin From File…* and select the file.
+2. **Open** *Tools → Semantic Search…* (<kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd> on macOS, <kbd>Ctrl</kbd><kbd>⇧</kbd><kbd>E</kbd> on Windows/Linux).
+3. **Download the model** when asked. This happens once: about 590 MB from Hugging Face, checksum-verified, stored in your Zotero profile.
+4. **Let it index.** All your PDFs are indexed in the background; progress appears at the bottom of the sidebar. A journal article takes a few seconds, a long book a minute or two. You can search while it runs, and later PDFs are picked up automatically.
+5. **Search.** Type or paste your text and press <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd>.
 
-Once installed, the plugin updates itself: Zotero periodically checks the latest release (Tools → Plugins → gear icon → *Check for Updates* to check now).
+## Writing good queries
 
-The plugin uses `file_embeddings.db` in your Zotero data directory (next to `zotero.sqlite`) — exactly where the original app kept it. If it does not exist it is created; the path can be changed in the preferences.
+- **Write sentences, not keywords.** The best query is often a sentence or a paragraph from what you are writing: the plugin finds the passages that make, support or discuss the same point.
+- **Long paragraphs are fine.** Each sentence is matched on its own. When a result matches one specific part of your text, it says which one (*matches: "…"*).
+- **Use any language.** Your query and your sources do not need to be in the same language.
+- **Adjust the minimum similarity.** Similarity goes from 0 to 1. The default of 0.60 suits paragraph-long queries; for a single short sentence, 0.45–0.55 usually gives better results. Scores above ~0.7 are very close matches.
 
-## Compatibility with the original database
+## Working with results
 
-The original app embedded every PDF with Google's **LEALLA-large** (TF Hub). Because query and document vectors must come from the same model, the plugin runs a re-implementation of that exact model, verified against the original TensorFlow graph:
+| Action | What it does |
+| --- | --- |
+| **Open PDF (p. N)** | Opens the PDF in Zotero's reader at the passage's page and searches for the passage |
+| **Show in library** | Selects the item in the main Zotero window |
+| **Copy citation** | Copies a formatted citation in your Quick Copy style, with the page |
+| **Copy prompt** | Copies a ready-made prompt asking an LLM how the passage supports your text |
+| **To review / Cited / Irrelevant** | Marks the passage; marks are saved with the search |
+| **Type** filter | Keeps only the selected item types; nothing selected = everything |
+| **Group by document** | Shows one card per document, with all its matching passages |
+| **Save as collection** | Creates a Zotero collection with the items in the results |
+| **Copy list** | Copies the list of documents, with pages and scores |
+| **Exclude document** | Removes a document from the index (you can include it again later) |
 
-- identical token ids on 1,018 real passages from the library, cosine similarity **1.0000000** between the plugin's embeddings and TensorFlow's;
-- replaying the 55 searches saved by the original app returns the same results, with similarities equal to ~10⁻⁶.
+<p align="center"><img src="docs/images/type-filter.png" alt="Filter results by item type" width="640"></p>
 
-What is kept as is: the `embeddings`, `excluded` and `history` tables and their meaning (attachment key = storage folder name, sha256 query ids, result JSON). What is added (additive, the original app could still read the file): an index on `embeddings(id)`, and the columns `scheme`, `chunk_text`, `page`, `char_start`.
+## Inside Zotero
 
-### Old vs new passages
+The item pane has a **Semantic Search** section. It shows whether the selected PDF is indexed and which documents in your library are most similar to it, and lets you index, re-index or exclude it. The same actions are in the item context menu, together with *Find Similar Documents* and *Search Passages Like This Abstract*.
 
-The original app cut each PDF into 2,500-character sections, but the model only reads the first 128 tokens of its input, so most of every section was never embedded. Newly indexed PDFs are cut into passages that fit the model's window (at sentence boundaries), so the **whole text** is searchable, and each passage stores its text and page.
+<p align="center"><img src="docs/images/item-pane.png" alt="Semantic Search section in the item pane" width="340"></p>
 
-For documents indexed by the original app, the passage text is recovered from the PDF at the section's estimated position (marked "≈"); *Find exact passage* locates it precisely by re-embedding nearby windows. Preferences → *Re-index documents of the previous version* upgrades them to full-text passages (slow; it also changes their passages in saved results).
+## Use it from your AI assistant (MCP)
 
-## MCP (AI assistants)
+The plugin includes a [Model Context Protocol](https://modelcontextprotocol.io) server, so an AI assistant on your computer can search your library, read the passages and cite them properly. Zotero must be running.
 
-The endpoint lives on Zotero's local HTTP server and accepts only local, non-browser requests:
-
-```
-http://127.0.0.1:23119/semantic-search/mcp
-```
-
-Claude Code:
+**Claude Code**
 
 ```bash
-claude mcp add --transport http zotero http://127.0.0.1:23119/semantic-search/mcp
+claude mcp add --scope user --transport http zotero http://127.0.0.1:23119/semantic-search/mcp
 ```
 
-Claude Desktop (`claude_desktop_config.json`, via [mcp-remote](https://www.npmjs.com/package/mcp-remote)):
+**Claude Desktop** (`claude_desktop_config.json`, via [mcp-remote](https://www.npmjs.com/package/mcp-remote))
 
 ```json
 {
@@ -72,42 +91,78 @@ Claude Desktop (`claude_desktop_config.json`, via [mcp-remote](https://www.npmjs
 }
 ```
 
-Searches made through MCP are not added to your search history. Zotero must be running. The endpoint can be disabled in the preferences.
+Any other MCP client can use the same URL (Streamable HTTP transport). The exact snippets are also shown in the plugin's preferences.
 
-## How it works
+Then just ask, for example:
 
-| Piece | Where |
+> *"Find sources in my Zotero library that support this paragraph, and give me the citations with page numbers."*
+>
+> *"Which books in my library discuss the explainability of machine learning models? Quote the most relevant passages."*
+
+| Tool | Description |
 | --- | --- |
-| Tokenizer reproducing the TF graph (control-char removal, ICU script tokenization, WordPiece) | `addon/content/lib/tokenizer.js` |
-| LEALLA-large forward pass (24 layers, GELU pooler) + int8 vector scan, Rust → WebAssembly SIMD | `wasm/src/lib.rs` → `addon/content/lealla.wasm` |
-| Embedding workers (ChromeWorkers), chunking | `addon/content/workers/`, `lib/embedder.js`, `lib/chunker.js` |
-| `file_embeddings.db` access | `lib/store.js` |
-| In-memory int8 index (≈130 MB for 500k passages, cached in the profile), exact re-ranking | `lib/vector-index.js`, `lib/search.js` |
-| Incremental indexing, library watcher | `lib/indexer.js` |
-| MCP protocol / Zotero endpoint | `lib/mcp.js`, `lib/mcp-endpoint.js` |
-| UI (window, item pane, menus, preferences) | `addon/content/ui/`, `lib/ui.js`, `addon/locale/` |
+| `semantic_search` | Passages closest in meaning to a query, with item metadata, item type, page and text. Optional filters: `min_similarity`, `item_types`, `group_by_item` |
+| `get_passage` | The text around a result, for more context |
+| `get_item` | Full bibliographic data and a formatted citation |
+| `find_similar_items` | Documents most similar to a given one |
+| `index_status` | Size and state of the index |
+| `list_saved_searches` | Your saved searches |
 
-Weights come from the Hugging Face port [`setu4993/LEALLA-large`](https://huggingface.co/setu4993/LEALLA-large) (pinned revision), whose tensors are bit-identical to the TF Hub model; the port's `BertModel` is *not* equivalent to the original graph (tanh pooler, wrong token-type row), which is why the forward pass is implemented here.
+Searches made through MCP do not end up in your search history. The endpoint only accepts local, non-browser connections and can be turned off in the preferences.
 
-Typical timings (Apple M4 Pro): full scan of 500k passages 16 ms, a whole search with exact re-ranking ~150 ms, one passage embedded in ~30–100 ms, index loaded from cache in <1 s.
+## OCR for scanned PDFs
 
-## Development
+PDFs that have no text layer (typically scans) cannot be searched, so they are listed under **Excluded documents** with the reason *no text*. Click **Run OCR** there, or in the item pane. A terminal window opens and runs [ocrmypdf](https://ocrmypdf.readthedocs.io); when it finishes, the PDF is replaced in place by its OCRed version and indexed automatically.
+
+ocrmypdf must be installed (`brew install ocrmypdf` on macOS; see its docs for Windows and Linux). OCR languages are set in the preferences (tesseract codes, default `ita+eng`).
+
+## Settings
+
+*Zotero → Settings → Semantic Search*
+
+- **Minimum similarity** and **maximum number of results**
+- **Automatically index new PDFs**, and the number of **parallel indexing workers** (more workers index faster but use more memory, ~150 MB each while indexing)
+- **OCR languages**
+- **MCP server** on/off, with ready-to-copy configuration for Claude Code and Claude Desktop
+- Model status, and maintenance actions
+
+## Privacy
+
+Everything happens on your computer: text extraction, embeddings, search and the MCP server. The only network requests are:
+
+- the one-time model download from Hugging Face (pinned version, checksum-verified);
+- Zotero's periodic check for plugin updates on GitHub.
+
+## FAQ
+
+**Where is the index stored?**
+In `file_embeddings.db`, next to `zotero.sqlite` in your Zotero data directory. The model and a small cache live in your Zotero profile. If you sync your data directory (e.g. with Dropbox), the index goes with it.
+
+**Why is one of my PDFs not in the results?**
+Look at the item pane or at *Excluded documents*. PDFs without text (scans) can be fixed with *Run OCR*; encrypted PDFs cannot be read.
+
+**What model does it use?**
+[LEALLA-large](https://huggingface.co/setu4993/LEALLA-large), a compact multilingual sentence encoder from Google (109 languages). It runs inside Zotero via WebAssembly, with no Python, server or GPU needed.
+
+**I used the original Python version of this project. Do I lose my index?**
+No. The plugin reads the existing `file_embeddings.db` as is, including the saved searches and excluded documents, and only indexes PDFs added since.
+
+## For developers
 
 ```bash
-npm test                      # tokenizer/encoder vs TF oracle fixtures, chunker, MCP, scan kernel
-node scripts/build.mjs --wasm # rebuild lealla.wasm (Rust, wasm32-unknown-unknown) and the .xpi
+npm test                        # unit tests (tokenizer and encoder vs. the reference model, chunker, MCP, scan kernel)
+node scripts/build.mjs          # build build/zotero-semantic-search-<version>.xpi
+node scripts/build.mjs --wasm   # also rebuild the WebAssembly encoder (Rust, wasm32-unknown-unknown)
 ```
 
-Model-dependent tests need `.model/model.safetensors` and `.model/vocab.txt` (or `MODEL_DIR`). `tools/tf_oracle.py` runs the original TF Hub model to produce ground truth; `tools/reference_model.py` is a readable PyTorch version of the graph.
+- `addon/` is the plugin: `content/lib/` holds the services (indexing, vector index, search, MCP), `content/ui/` the windows, `locale/` the English and Italian strings.
+- `wasm/` is the LEALLA-large forward pass and the int8 vector scan in Rust, compiled to WebAssembly SIMD.
+- `tools/` has the scripts used to check the encoder against the original TensorFlow model.
+- Model-dependent tests need `.model/model.safetensors` and `.model/vocab.txt` (or `MODEL_DIR`).
+- To run from source, put a file named `semantic-search@ildon.github.io`, containing the absolute path of `addon/`, in your Zotero profile's `extensions/` folder.
 
-### Releasing
-
-Push a tag `vX.Y.Z` on a commit of `master`:
+**Releasing**: push a tag `vX.Y.Z` on a commit of `master`. The *Release* workflow runs the tests, builds the XPI with that version and publishes a GitHub release with the XPI and `updates.json`, from which installed copies update themselves.
 
 ```bash
-git tag v2.2.0 && git push origin v2.2.0
+git tag v2.3.0 && git push origin v2.3.0
 ```
-
-The `Release` workflow runs the tests, builds the XPI with the version taken from the tag, and publishes a GitHub release with the XPI and `updates.json`. Installed plugins read that file (`update_url` = `releases/latest/download/updates.json`) and update automatically. The `updates.json` at the repository root is only read by versions ≤ 2.1.0, which used the old update URL.
-
-To run the plugin from source, put a file named `semantic-search@ildon.github.io` containing the absolute path of `addon/` in your Zotero profile's `extensions/` folder.
