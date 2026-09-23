@@ -54,6 +54,7 @@ jobs:
           VERSION="${{ steps.tag.outputs.version }}"
           gh release create "$GITHUB_REF_NAME" \
             "build/zotero-semantic-search-$VERSION.xpi" \
+            "build/zotero-semantic-search-$VERSION.mcpb" \
             build/updates.json \
             --title "$GITHUB_REF_NAME" \
             --generate-notes \

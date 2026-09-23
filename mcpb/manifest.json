@@ -1,0 +1,59 @@
+{
+  "manifest_version": "0.3",
+  "name": "zotero-semantic-search",
+  "display_name": "Zotero Semantic Search",
+  "version": "0.0.0",
+  "description": "Search your Zotero library by meaning and cite passages with page numbers.",
+  "long_description": "Connects Claude to the Zotero Semantic Search plugin running in Zotero on this computer. Claude can find the passages in your PDFs that are closest in meaning to a query (in any of 109 languages), read them in context, and get full bibliographic data and formatted citations. Everything stays on your computer: this extension only talks to Zotero's local server (127.0.0.1). Requires Zotero 7-10 with the Semantic Search plugin installed and running.",
+  "author": {
+    "name": "Gherardo Carullo",
+    "url": "https://github.com/ilDon"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ilDon/zotero-semantic-search"
+  },
+  "homepage": "https://github.com/ilDon/zotero-semantic-search",
+  "documentation": "https://github.com/ilDon/zotero-semantic-search#use-it-from-your-ai-assistant-mcp",
+  "support": "https://github.com/ilDon/zotero-semantic-search/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "ZOTERO_PORT": "${user_config.zotero_port}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "semantic_search", "description": "Find passages in the PDFs of the Zotero library whose meaning is close to a query" },
+    { "name": "get_passage", "description": "Get the text around a search result" },
+    { "name": "get_item", "description": "Bibliographic metadata and a formatted citation for a Zotero item" },
+    { "name": "find_similar_items", "description": "Documents in the library most similar to a given one" },
+    { "name": "index_status", "description": "Size and state of the semantic index" },
+    { "name": "list_saved_searches", "description": "The user's saved semantic searches" }
+  ],
+  "keywords": ["zotero", "semantic search", "research", "citations", "pdf", "bibliography"],
+  "license": "MIT",
+  "user_config": {
+    "zotero_port": {
+      "type": "number",
+      "title": "Zotero local server port",
+      "description": "Port of Zotero's local HTTP server. Leave 23119 unless you changed it in Zotero.",
+      "default": 23119,
+      "min": 1,
+      "max": 65535,
+      "required": false
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "privacy_policies": []
+}

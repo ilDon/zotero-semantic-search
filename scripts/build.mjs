@@ -1,4 +1,5 @@
-// Packages addon/ into build/zotero-semantic-search-<version>.xpi
+// Packages addon/ into build/zotero-semantic-search-<version>.xpi and the
+// Claude Desktop extension mcpb/ into build/zotero-semantic-search-<version>.mcpb
 // Usage: node scripts/build.mjs [--wasm] [--version X.Y.Z]
 //   --wasm     rebuild lealla.wasm with cargo first
 //   --version  build with this version instead of the one in addon/manifest.json
@@ -46,3 +47,17 @@ rmSync(out, { force: true });
 execFileSync('zip', ['-r', '-X', '-q', out, '.'], { cwd: stage, stdio: 'inherit' });
 rmSync(stage, { recursive: true, force: true });
 console.log(out);
+
+// Claude Desktop extension: the stdio bridge plus the plugin's MCP protocol code
+const mcpbStage = join(build, 'mcpb-stage');
+rmSync(mcpbStage, { recursive: true, force: true });
+cpSync(join(root, 'mcpb'), mcpbStage, { recursive: true, filter: src => !/(^|\/)\.[^/]+$/.test(src) && !src.endsWith('.svg') });
+copyFileSync(join(addon, 'content/lib/mcp.js'), join(mcpbStage, 'server/mcp.js'));
+const mcpbManifest = JSON.parse(readFileSync(join(root, 'mcpb/manifest.json'), 'utf8'));
+mcpbManifest.version = version;
+writeFileSync(join(mcpbStage, 'manifest.json'), JSON.stringify(mcpbManifest, null, 2) + '\n');
+const mcpbOut = join(build, `zotero-semantic-search-${version}.mcpb`);
+rmSync(mcpbOut, { force: true });
+execFileSync('zip', ['-r', '-X', '-q', mcpbOut, '.'], { cwd: mcpbStage, stdio: 'inherit' });
+rmSync(mcpbStage, { recursive: true, force: true });
+console.log(mcpbOut);
