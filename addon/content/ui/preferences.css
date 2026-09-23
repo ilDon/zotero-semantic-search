@@ -1,6 +1,6 @@
 #semsearch-prefpane .ss-grid {
 	display: grid;
-	grid-template-columns: max-content 90px;
+	grid-template-columns: max-content 110px;
 	align-items: center;
 	gap: 6px 10px;
 	margin-block: 4px;

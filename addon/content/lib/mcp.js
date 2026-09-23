@@ -17,7 +17,7 @@
 	'use strict';
 
 	const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
-	const SERVER_INFO = { name: 'zotero-semantic-search', title: 'Zotero Semantic Search', version: '2.0.1' };
+	const SERVER_INFO = { name: 'zotero-semantic-search', title: 'Zotero Semantic Search', version: '2.1.0' };
 
 	const INSTRUCTIONS = `This server searches the user's Zotero library by meaning (not keywords).
 Every PDF in the library is split into passages and embedded with LEALLA-large, a
@@ -36,7 +36,7 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 			title: 'Semantic search in Zotero',
 			description: 'Find passages in the PDFs of the Zotero library whose meaning is close to the query. '
 				+ 'Returns passages ranked by cosine similarity, with the Zotero item they come from '
-				+ '(title, authors, year, item key), the page and the passage text.',
+				+ '(title, authors, year, item type, item key), the page and the passage text.',
 			inputSchema: {
 				type: 'object',
 				properties: {
@@ -44,6 +44,11 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 					limit: { type: 'integer', minimum: 1, maximum: 100, default: 10, description: 'Maximum number of passages.' },
 					min_similarity: { type: 'number', minimum: 0, maximum: 1, description: 'Minimum cosine similarity (default 0.4).' },
 					group_by_item: { type: 'boolean', default: false, description: 'Return at most one passage (the best) per document.' },
+					item_types: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Only return passages from items of these Zotero item types, e.g. ["book", "journalArticle", "bookSection", "case", "statute", "thesis", "report", "conferencePaper", "document"]. Each result reports its item_type.',
+					},
 					use_cache: { type: 'boolean', default: false, description: 'Return the results saved in the user\'s search history if this exact query was searched before in Zotero.' },
 				},
 				required: ['query'],

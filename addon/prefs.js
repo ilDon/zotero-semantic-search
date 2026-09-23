@@ -4,3 +4,4 @@ pref("extensions.semantic-search.autoIndex", true);
 pref("extensions.semantic-search.workers", 3);
 pref("extensions.semantic-search.mcp.enabled", true);
 pref("extensions.semantic-search.dbPath", "");
+pref("extensions.semantic-search.ocr.languages", "ita+eng");

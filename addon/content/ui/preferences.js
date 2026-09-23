@@ -30,6 +30,13 @@ window.SemanticSearchPrefs = {
 		this._intPref('semsearch-max-results', 'maxResults', 10, 5000);
 		this._intPref('semsearch-workers', 'workers', 1, 8);
 		this._boolPref('semsearch-auto-index', 'autoIndex');
+		let langs = this.$('semsearch-ocr-languages');
+		langs.value = this.pref('ocr.languages') || 'ita+eng';
+		langs.addEventListener('change', () => {
+			let v = langs.value.trim().replace(/\s+/g, '');
+			if (/^[a-z_]+(\+[a-z_]+)*$/i.test(v)) this.setPref('ocr.languages', v);
+			else langs.value = this.pref('ocr.languages');
+		});
 		this._boolPref('semsearch-mcp-enabled', 'mcp.enabled');
 
 		let cfg = this.S.mcp.clientConfig();

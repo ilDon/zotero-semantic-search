@@ -1,5 +1,5 @@
 /* global Zotero, Services, ChromeUtils */
-/* global SSModelManager, SSStore, SSVectorIndex, SSEmbedder, SSPassages, SSSearch, SSIndexer, SSMcpEndpoint, SSUI */
+/* global SSModelManager, SSStore, SSVectorIndex, SSEmbedder, SSPassages, SSSearch, SSIndexer, SSOcr, SSMcpEndpoint, SSUI */
 var { setTimeout, clearTimeout, setInterval, clearInterval } = ChromeUtils.importESModule(
 	'resource://gre/modules/Timer.sys.mjs'
 );
@@ -13,7 +13,7 @@ var SemanticSearchPlugin = {
 		this.version = version;
 		this.rootURI = rootURI;
 		for (let f of ['mcp', 'model-manager', 'store', 'vector-index', 'embedder', 'passages',
-			'search', 'indexer', 'mcp-endpoint', 'ui']) {
+			'search', 'indexer', 'ocr', 'mcp-endpoint', 'ui']) {
 			Services.scriptloader.loadSubScript(rootURI + `content/lib/${f}.js`);
 		}
 
@@ -27,6 +27,7 @@ var SemanticSearchPlugin = {
 			passages: SSPassages,
 			search: SSSearch,
 			indexer: SSIndexer,
+			ocr: SSOcr,
 			mcp: SSMcpEndpoint,
 			ui: SSUI,
 		};
@@ -34,6 +35,7 @@ var SemanticSearchPlugin = {
 		SSMcpEndpoint.register();
 		SSIndexer.registerNotifier();
 		SSUI.startup(this);
+		SSOcr.startup().catch(e => Zotero.logError(e));
 
 		// Background work after Zotero has settled: load the index, then pick up new PDFs
 		this._startupTimer = setTimeout(() => this._backgroundStart(), this.STARTUP_DELAY_MS);
@@ -66,6 +68,7 @@ var SemanticSearchPlugin = {
 			SSUI.shutdown();
 			SSIndexer.unregisterNotifier();
 			SSIndexer.cancel();
+			SSOcr.shutdown();
 			SSMcpEndpoint.unregister();
 			SSModelManager.cancelDownload();
 			SSEmbedder.shutdown();

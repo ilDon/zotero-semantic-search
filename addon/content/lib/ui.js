@@ -1,4 +1,4 @@
-/* global Zotero, Services, SSStore, SSVectorIndex, SSIndexer, SSSearch, SSPassages, SSModelManager */
+/* global Zotero, Services, SSStore, SSVectorIndex, SSIndexer, SSSearch, SSPassages, SSModelManager, SSOcr */
 /* exported SSUI */
 
 /**
@@ -209,6 +209,7 @@ var SSUI = {
 			}, 1000);
 		};
 		this._unsubscribe.push(SSIndexer.onChange(throttled));
+		this._unsubscribe.push(SSOcr.onChange(throttled));
 		this._unsubscribe.push(SSVectorIndex.onChange(() => {
 			if (SSVectorIndex.loaded) throttled();
 		}));
@@ -326,6 +327,17 @@ var SSUI = {
 		else if (exclusion) {
 			let reason = await doc.l10n.formatValue('semsearch-reason-' + exclusion.reason).catch(() => exclusion.reason);
 			doc.l10n.setAttributes(status, 'semsearch-pane-excluded', { reason: reason || exclusion.reason });
+			if (exclusion.reason === 'no_text') {
+				if (SSOcr.isPending(att.key)) {
+					let note = doc.createElement('span');
+					note.className = 'ss-status';
+					doc.l10n.setAttributes(note, 'semsearch-ocr-running');
+					el.appendChild(note);
+				}
+				else {
+					buttons.push(['semsearch-ocr', () => SSOcr.start(att)]);
+				}
+			}
 			buttons.push(['semsearch-menu-include', () => SSIndexer.include([att.key])]);
 		}
 		else if (info) {

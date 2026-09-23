@@ -23,6 +23,7 @@ var SemanticSearchWindow = {
 	_textQueue: [],
 	_textBusy: 0,
 	_searchSeq: 0,
+	typeFilter: new Set(), // Zotero item type names; empty = all types
 
 	$(id) {
 		return document.getElementById(id);
@@ -77,6 +78,18 @@ var SemanticSearchWindow = {
 		this.$('copy-list-button').addEventListener('click', () => this.copyList());
 		this.$('collection-button').addEventListener('click', () => this.saveAsCollection());
 		this.$('excluded-button').addEventListener('click', () => this.showExcluded());
+		this.$('type-filter-button').addEventListener('click', (e) => {
+			e.stopPropagation();
+			let popup = this.$('type-filter-popup');
+			popup.hidden = !popup.hidden;
+		});
+		this.$('type-filter-popup').addEventListener('click', e => e.stopPropagation());
+		document.addEventListener('click', () => {
+			this.$('type-filter-popup').hidden = true;
+		});
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') this.$('type-filter-popup').hidden = true;
+		});
 
 		this._observer = new IntersectionObserver((entries) => {
 			for (let entry of entries) {
@@ -93,6 +106,9 @@ var SemanticSearchWindow = {
 		this._unsubscribe.push(this.S.indexer.onChange(refreshStatus));
 		this._unsubscribe.push(this.S.index.onChange(refreshStatus));
 		this._unsubscribe.push(this.S.model.onChange(refreshStatus));
+		this._unsubscribe.push(this.S.ocr.onChange(() => {
+			if (this.view === 'excluded') this.showExcluded();
+		}));
 		window.addEventListener('unload', () => this.destroy());
 
 		await this.renderStatus();
@@ -396,6 +412,7 @@ var SemanticSearchWindow = {
 	async showResults(res) {
 		this.view = 'results';
 		this.current = res;
+		this.typeFilter = new Set();
 		// metadata first (fast); passage texts are loaded lazily as cards scroll into view
 		await this.S.passages.enrich(res.results, { text: false });
 		this.renderHistory();
@@ -417,6 +434,7 @@ var SemanticSearchWindow = {
 	_filtered() {
 		let f = this.$('status-filter').value;
 		let results = this.current ? this.current.results : [];
+		if (this.typeFilter.size) results = results.filter(r => this.typeFilter.has(r.itemType));
 		if (f === 'all') return results;
 		if (f === 'hide-irrelevant') return results.filter(r => (r.status || 0) !== STATUS.irrelevant);
 		let s = parseInt(f);
@@ -444,6 +462,7 @@ var SemanticSearchWindow = {
 		}
 		this.$('results-summary').replaceChildren(...summary);
 		this.$('rerun-button').hidden = !this.current.fromCache;
+		this._renderTypeFilter();
 		header.hidden = false;
 
 		if (!this.current.results.length) {
@@ -461,6 +480,63 @@ var SemanticSearchWindow = {
 		}
 		container.replaceChildren(frag);
 		container.scrollTop = 0;
+	},
+
+	_typeName(type) {
+		try {
+			return Zotero.ItemTypes.getLocalizedString(type) || type;
+		}
+		catch (e) {
+			return type;
+		}
+	},
+
+	/** Multi-select filter on the item types present in the current results */
+	_renderTypeFilter() {
+		let button = this.$('type-filter-button');
+		let popup = this.$('type-filter-popup');
+		let counts = new Map();
+		for (let r of this.current ? this.current.results : []) {
+			if (!r.itemType) continue;
+			counts.set(r.itemType, (counts.get(r.itemType) || 0) + 1);
+		}
+		// drop selections that no longer match anything
+		for (let t of [...this.typeFilter]) {
+			if (!counts.has(t)) this.typeFilter.delete(t);
+		}
+		let types = [...counts.keys()].sort((a, b) => this._typeName(a).localeCompare(this._typeName(b)));
+		this.$('type-filter').hidden = !types.length;
+		if (this.typeFilter.size) {
+			let names = [...this.typeFilter].map(t => this._typeName(t));
+			let label = names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
+			document.l10n.setAttributes(button, 'semsearch-type-filter-some', { types: label });
+			button.classList.add('active');
+		}
+		else {
+			document.l10n.setAttributes(button, 'semsearch-type-filter-all');
+			button.classList.remove('active');
+		}
+		let rows = types.map((t) => {
+			let box = this.el('input', { type: 'checkbox' });
+			box.checked = this.typeFilter.has(t);
+			box.addEventListener('change', () => {
+				if (box.checked) this.typeFilter.add(t);
+				else this.typeFilter.delete(t);
+				this.renderResults();
+			});
+			return this.el('label', {}, box, this.el('span', { text: this._typeName(t) }),
+				this.el('span', { class: 'count', text: String(counts.get(t)) }));
+		});
+		let reset = this.el('button', {
+			class: 'link-button reset',
+			l10n: ['semsearch-type-filter-reset'],
+			disabled: !this.typeFilter.size,
+			onclick: () => {
+				this.typeFilter = new Set();
+				this.renderResults();
+			},
+		});
+		popup.replaceChildren(...rows, reset);
 	},
 
 	_strength(sim) {
@@ -828,6 +904,7 @@ var SemanticSearchWindow = {
 					this.el('div', { class: 'sub' },
 						this.el('span', { l10n: ['semsearch-reason-' + e.reason] }),
 						` · ${this._formatDate(e.date)}${meta && meta.creators ? ' · ' + meta.creators : ''}`)),
+				this._ocrControl(e, item),
 				this.el('button', {
 					l10n: ['semsearch-excluded-include'],
 					onclick: async () => {
@@ -839,6 +916,26 @@ var SemanticSearchWindow = {
 			rows.push(row);
 		}
 		container.replaceChildren(...rows);
+	},
+
+	/** OCR button for documents excluded because their PDF has no text */
+	_ocrControl(exclusion, item) {
+		if (exclusion.reason !== 'no_text' || !item || !item.isPDFAttachment()) return null;
+		if (this.S.ocr.isPending(item.key)) {
+			return this.el('span', { class: 'ocr-note', l10n: ['semsearch-ocr-running'] });
+		}
+		return this.el('button', {
+			l10n: ['semsearch-ocr'],
+			title: 'ocrmypdf',
+			onclick: async () => {
+				try {
+					await this.S.ocr.start(item);
+				}
+				catch (err) {
+					this.showError(err);
+				}
+			},
+		});
 	},
 
 	async showSimilar(key) {
