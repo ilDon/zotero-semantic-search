@@ -1,24 +1,13 @@
 {
   "name": "zotero-semantic-search",
-  "version": "1.0.0",
-  "main": "index.js",
-  "repository": "https://github.com/ilDon/zotero-semantic-search.git",
-  "author": "Don <4340360+ilDon@users.noreply.github.com>",
-  "license": "MIT",
+  "version": "2.0.0",
   "private": true,
+  "description": "Zotero plugin: semantic search over the full text of your library, with a local MCP endpoint",
+  "repository": "https://github.com/ilDon/zotero-semantic-search.git",
+  "license": "MIT",
   "scripts": {
-    "start-api": "python start.py",
-    "start-api-mac": "python3 start.py",
-    "start-app": "cd zotero-semantic-search-ui && yarn start",
-    "start": "concurrently \"yarn start-api\" \"yarn start-app\"",
-    "start-mac": "concurrently \"yarn start-api-mac\" \"yarn start-app\"",
-    "setup": "cd zotero-semantic-search-ui && yarn install"
-  },
-  "devDependencies": {
-    "concurrently": "^8.0.1"
-  },
-  "dependencies": {
-    "dexie": "^3.2.3",
-    "lz-string": "^1.5.0"
+    "build:wasm": "cd wasm && cargo build --release && cp target/wasm32-unknown-unknown/release/lealla_wasm.wasm ../addon/content/lealla.wasm",
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.js"
   }
 }

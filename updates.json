@@ -1,0 +1,17 @@
+{
+  "addons": {
+    "semantic-search@ildon.github.io": {
+      "updates": [
+        {
+          "version": "2.0.0",
+          "update_link": "https://github.com/ilDon/zotero-semantic-search/releases/download/v2.0.0/zotero-semantic-search-2.0.0.xpi",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "7.0"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
