@@ -577,3 +577,39 @@ h3.view-title {
 	color: var(--ss-muted);
 	font-size: 12px;
 }
+
+.date-filter-popup {
+	padding: 10px 12px;
+	min-width: 260px;
+}
+
+.date-filter-popup .date-row {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 6px;
+	padding: 0;
+}
+
+.date-filter-popup .date-row:hover {
+	background: none;
+}
+
+.date-filter-popup input[type="date"] {
+	margin: 0;
+}
+
+.date-presets {
+	display: flex;
+	gap: 6px;
+	margin-top: 8px;
+	flex-wrap: wrap;
+}
+
+.date-presets button {
+	margin: 0;
+}
+
+.date-filter-popup .reset {
+	margin: 8px 0 0;
+}

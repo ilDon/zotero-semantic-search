@@ -60,7 +60,36 @@ var SSPassages = {
 			year,
 			itemType: Zotero.ItemTypes.getName(parent.itemTypeID),
 			publication: parent.getField('publicationTitle', false, true) || parent.getField('bookTitle', false, true) || '',
+			// when the item was added to Zotero, UTC "YYYY-MM-DD HH:MM:SS"
+			dateAdded: parent.dateAdded || attachment.dateAdded || '',
 		};
+	},
+
+	/**
+	 * Parse a "YYYY-MM-DD" date as local midnight and return it in the format of
+	 * Zotero's dateAdded (UTC "YYYY-MM-DD HH:MM:SS"), or null if invalid.
+	 */
+	sinceToUTC(date) {
+		let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date || '').trim());
+		if (!m) return null;
+		let d = new Date(+m[1], +m[2] - 1, +m[3]);
+		if (isNaN(d) || d.getMonth() !== +m[2] - 1) return null;
+		return d.toISOString().replace('T', ' ').slice(0, 19);
+	},
+
+	/**
+	 * Keys of the PDF attachments whose item (the parent, or the attachment itself
+	 * when standalone) was added to Zotero at or after `sinceUTC`.
+	 */
+	async attachmentKeysAddedSince(sinceUTC) {
+		return Zotero.DB.columnQueryAsync(
+			`SELECT A.key FROM itemAttachments IA
+			JOIN items A ON A.itemID = IA.itemID
+			LEFT JOIN items P ON P.itemID = IA.parentItemID
+			WHERE IA.contentType = 'application/pdf'
+			AND COALESCE(P.dateAdded, A.dateAdded) >= ?`,
+			[sinceUTC]
+		);
 	},
 
 	get textCacheDir() {

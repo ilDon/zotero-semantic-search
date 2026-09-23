@@ -68,6 +68,21 @@
 					<html:button id="type-filter-button" class="type-filter-button" aria-haspopup="true"/>
 					<html:div id="type-filter-popup" class="type-filter-popup" hidden="true"/>
 				</html:div>
+				<html:div id="date-filter" class="type-filter">
+					<html:button id="date-filter-button" class="type-filter-button" aria-haspopup="true"/>
+					<html:div id="date-filter-popup" class="type-filter-popup date-filter-popup" hidden="true">
+						<html:label class="date-row">
+							<html:span data-l10n-id="semsearch-date-filter-label"/>
+							<html:input id="date-filter-input" type="date"/>
+						</html:label>
+						<html:div class="date-presets">
+							<html:button data-months="1" data-l10n-id="semsearch-date-filter-1m"/>
+							<html:button data-months="6" data-l10n-id="semsearch-date-filter-6m"/>
+							<html:button data-months="12" data-l10n-id="semsearch-date-filter-1y"/>
+						</html:div>
+						<html:button id="date-filter-reset" class="link-button reset" data-l10n-id="semsearch-date-filter-reset"/>
+					</html:div>
+				</html:div>
 				<html:div class="header-actions">
 					<html:button id="rerun-button" data-l10n-id="semsearch-rerun" hidden="true"/>
 					<html:button id="copy-list-button" data-l10n-id="semsearch-copy-list"/>

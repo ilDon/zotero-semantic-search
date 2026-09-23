@@ -44,6 +44,10 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 					limit: { type: 'integer', minimum: 1, maximum: 100, default: 10, description: 'Maximum number of passages.' },
 					min_similarity: { type: 'number', minimum: 0, maximum: 1, description: 'Minimum cosine similarity (default 0.4).' },
 					group_by_item: { type: 'boolean', default: false, description: 'Return at most one passage (the best) per document.' },
+					added_after: {
+						type: 'string',
+						description: 'Only search items added to the Zotero library on or after this date (YYYY-MM-DD). Filtering happens before ranking, so `limit` applies to the matching items only. Each result reports its date_added.',
+					},
 					item_types: {
 						type: 'array',
 						items: { type: 'string' },
@@ -141,6 +145,9 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 		switch (name) {
 			case 'semantic_search':
 				if (typeof args.query !== 'string' || !args.query.trim()) return toolError('query must be a non-empty string');
+				if (args.added_after !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(args.added_after))) {
+					return toolError('added_after must be a date in the form YYYY-MM-DD');
+				}
 				return toolResult(await service.search(args));
 			case 'get_passage':
 				if (!args.attachment_key || !Number.isInteger(args.section)) {

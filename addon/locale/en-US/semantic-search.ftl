@@ -151,3 +151,11 @@ semsearch-type-filter-reset = Show all types
 semsearch-ocr = Run OCR
 semsearch-ocr-running = OCR running in the terminal…
 semsearch-prefs-ocr-languages = OCR languages (tesseract codes, e.g. ita+eng):
+
+semsearch-date-filter-any = Added: any time
+semsearch-date-filter-since = Added since { $date }
+semsearch-date-filter-label = Only items added to Zotero on or after:
+semsearch-date-filter-1m = Last month
+semsearch-date-filter-6m = Last 6 months
+semsearch-date-filter-1y = Last year
+semsearch-date-filter-reset = Any time
