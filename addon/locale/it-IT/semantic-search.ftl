@@ -144,3 +144,10 @@ semsearch-index-found = { $count } nuovi PDF da indicizzare
 
 semsearch-similar-title = Documenti simili a «{ $title }»
 semsearch-error = Errore: { $message }
+
+semsearch-type-filter-all = Tipo: tutti
+semsearch-type-filter-some = Tipo: { $types }
+semsearch-type-filter-reset = Mostra tutti i tipi
+semsearch-ocr = Esegui OCR
+semsearch-ocr-running = OCR in corso nel terminale…
+semsearch-prefs-ocr-languages = Lingue OCR (codici tesseract, es. ita+eng):

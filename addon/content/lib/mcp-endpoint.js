@@ -128,6 +128,13 @@ var SSMcpEndpoint = {
 				save: false,
 			});
 			let results = res.results;
+			if (Array.isArray(args.item_types) && args.item_types.length) {
+				// filter on the item type before taking the top results
+				let wanted = new Set(args.item_types.map(String));
+				results = results.map(r => ({ ...r }));
+				await SSPassages.enrich(results, { text: false });
+				results = results.filter(r => wanted.has(r.itemType));
+			}
 			let total = results.length;
 			if (args.group_by_item) {
 				results = SSSearch.groupByDocument(results).map(g => g.results[0]);
@@ -271,6 +278,7 @@ var SSMcpEndpoint = {
 					title: d.title,
 					authors: d.authors,
 					year: d.year || null,
+					item_type: d.itemType || null,
 					item_key: d.itemKey,
 					attachment_key: d.key,
 					zotero_select: `zotero://select/library/items/${d.itemKey}`,
