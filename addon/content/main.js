@@ -1,5 +1,5 @@
 /* global Zotero, Services, ChromeUtils */
-/* global SSModelManager, SSStore, SSVectorIndex, SSEmbedder, SSPassages, SSSearch, SSIndexer, SSOcr, SSMcpEndpoint, SSUI */
+/* global SSModels, SSEvents, SSModelManager, SSStore, SSVectorIndex, SSEmbedder, SSPassages, SSSearch, SSIndexer, SSOcr, SSMcpEndpoint, SSUI */
 var { setTimeout, clearTimeout, setInterval, clearInterval } = ChromeUtils.importESModule(
 	'resource://gre/modules/Timer.sys.mjs'
 );
@@ -12,14 +12,16 @@ var SemanticSearchPlugin = {
 		this.id = id;
 		this.version = version;
 		this.rootURI = rootURI;
-		for (let f of ['mcp', 'model-manager', 'store', 'vector-index', 'embedder', 'passages',
-			'search', 'indexer', 'ocr', 'mcp-endpoint', 'ui']) {
+		for (let f of ['mcp', 'models', 'f16', 'model-manager', 'embedding-store', 'store', 'vector-index',
+			'embedder', 'passages', 'search', 'indexer', 'ocr', 'mcp-endpoint', 'ui']) {
 			Services.scriptloader.loadSubScript(rootURI + `content/lib/${f}.js`);
 		}
 
 		// Public API used by the UI windows (they run in their own globals)
 		Zotero.SemanticSearch = {
 			plugin: this,
+			models: SSModels,
+			events: SSEvents,
 			model: SSModelManager,
 			store: SSStore,
 			index: SSVectorIndex,
@@ -31,6 +33,15 @@ var SemanticSearchPlugin = {
 			mcp: SSMcpEndpoint,
 			ui: SSUI,
 		};
+
+		// Choose the default model on first run, then migrate earlier versions' database
+		try {
+			await SSModels.init();
+			await SSStore.open();
+		}
+		catch (e) {
+			Zotero.logError(e);
+		}
 
 		SSMcpEndpoint.register();
 		SSIndexer.registerNotifier();
@@ -47,7 +58,15 @@ var SemanticSearchPlugin = {
 		try {
 			if (!(await SSModelManager.isReady())) return;
 			await SSVectorIndex.load();
-			if (SSIndexer.autoIndex) await SSIndexer.indexNew();
+			let building = SSModels.building;
+			if (building) {
+				// A model switch was in progress: finish downloading, keep building
+				await building.files.ensureDownloaded();
+				await SSIndexer.indexNew();
+			}
+			else if (SSIndexer.autoIndex) {
+				await SSIndexer.indexNew();
+			}
 		}
 		catch (e) {
 			Zotero.logError(e);
@@ -70,9 +89,7 @@ var SemanticSearchPlugin = {
 			SSIndexer.cancel();
 			SSOcr.shutdown();
 			SSMcpEndpoint.unregister();
-			SSModelManager.cancelDownload();
-			SSEmbedder.shutdown();
-			await SSVectorIndex.flush();
+			await SSModels.shutdown();
 			await SSStore.close();
 		}
 		catch (e) {

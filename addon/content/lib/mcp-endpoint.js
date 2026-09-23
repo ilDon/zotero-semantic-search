@@ -1,4 +1,4 @@
-/* global Zotero, SSMcp, SSSearch, SSPassages, SSStore, SSVectorIndex, SSIndexer, SSModelManager */
+/* global Zotero, SSMcp, SSSearch, SSPassages, SSStore, SSVectorIndex, SSIndexer, SSModelManager, SSModels */
 /* exported SSMcpEndpoint */
 
 /**
@@ -10,7 +10,6 @@
  */
 var SSMcpEndpoint = {
 	PATH: '/semantic-search/mcp',
-	DEFAULT_MIN_SIMILARITY: 0.4,
 	TEXT_BUDGET_MS: 15000,
 
 	get url() {
@@ -120,6 +119,11 @@ var SSMcpEndpoint = {
 	},
 
 	service: {
+		instructions() {
+			let spec = SSModels.active.spec;
+			return SSMcp.instructions({ label: spec.label, languages: spec.languages, ...spec.guidance });
+		},
+
 		async search(args) {
 			let limit = Math.min(100, Math.max(1, parseInt(args.limit) || 10));
 			// Date filter: restrict the search itself to items added since that date
@@ -140,7 +144,7 @@ var SSMcpEndpoint = {
 			let res = await SSSearch.search(args.query, {
 				keys,
 				// Short LLM queries score lower than the paragraph-long queries of the UI
-				minSimilarity: typeof args.min_similarity === 'number' ? args.min_similarity : SSMcpEndpoint.DEFAULT_MIN_SIMILARITY,
+				minSimilarity: typeof args.min_similarity === 'number' ? args.min_similarity : SSModels.active.spec.mcpMinSimilarity,
 				// Saved UI searches use the stricter UI threshold: only reuse them on request
 				useCache: args.use_cache === true,
 				// Searches made by an LLM do not clutter the user's history
@@ -178,7 +182,7 @@ var SSMcpEndpoint = {
 					total_matches: 0,
 					results: [],
 					note: 'No passage reached the similarity threshold. Try rephrasing the query as a full sentence, '
-						+ 'or lower min_similarity (e.g. 0.5).',
+						+ `or lower min_similarity (the default for ${SSModels.active.spec.label} is ${SSModels.active.spec.mcpMinSimilarity}).`,
 				};
 			}
 			return {
@@ -311,18 +315,25 @@ var SSMcpEndpoint = {
 			for (let e of excluded) byReason[e.reason] = (byReason[e.reason] || 0) + 1;
 			let pending = null;
 			try {
-				pending = (await SSIndexer.findUnprocessed()).length;
+				pending = (await SSIndexer.findUnprocessed({ activeOnly: true })).length;
 			}
 			catch (e) {}
+			let spec = SSModels.active.spec;
+			let build = SSIndexer.status().build;
 			return {
+				embedding_model: spec.label,
 				model: (await SSModelManager.status()).state,
+				...(SSModels.buildingId ? {
+					switching_to: SSModels.building.spec.label,
+					switch_progress: build ? { done: build.done, total: build.total } : null,
+				} : {}),
 				indexed_documents: SSVectorIndex.loaded ? SSVectorIndex.documentCount() : (await SSStore.getIndexedIDs()).size,
 				indexed_passages: SSVectorIndex.loaded ? SSVectorIndex.liveCount : null,
 				excluded_documents: excluded.length,
 				excluded_by_reason: byReason,
 				waiting_to_be_indexed: pending,
 				indexer: SSIndexer.status().state,
-				database: SSStore.path,
+				database: SSModels.active.dbPath,
 			};
 		},
 

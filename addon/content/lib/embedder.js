@@ -1,24 +1,27 @@
-/* global Zotero, ChromeWorker, SSModelManager */
-/* exported SSEmbedder */
+/* global Zotero, ChromeWorker, SSActiveProxy, SSModels */
+/* exported SSEmbedderImpl, SSEmbedder */
 
 /**
- * Pool of embedding workers. One dedicated worker answers queries (so a search
- * is never stuck behind a long document), up to N others index documents.
- * Idle workers are terminated to give memory back (~150 MB each).
+ * Pool of embedding workers for one model. One dedicated worker answers
+ * queries (so a search is never stuck behind a long document), up to N others
+ * index documents. Idle workers are terminated to give memory back.
  */
-var SSEmbedder = {
-	QUERY_IDLE_MS: 15 * 60 * 1000,
-	POOL_IDLE_MS: 60 * 1000,
-
-	_query: null,
-	_pool: [],
-	_waiters: [],
-	_nextID: 1,
+var SSEmbedderImpl = class {
+	constructor(space) {
+		this.space = space;
+		this.dim = space.spec.dim;
+		this.QUERY_IDLE_MS = 15 * 60 * 1000;
+		this.POOL_IDLE_MS = 60 * 1000;
+		this._query = null;
+		this._pool = [];
+		this._waiters = [];
+		this._nextID = 1;
+	}
 
 	get poolSize() {
 		let n = parseInt(Zotero.Prefs.get('extensions.semantic-search.workers', true));
 		return Math.max(1, Math.min(8, Number.isFinite(n) ? n : 3));
-	},
+	}
 
 	_createWorker() {
 		let w = {
@@ -51,17 +54,31 @@ var SSEmbedder = {
 				w.dead = true;
 			};
 		});
-		w.worker.postMessage({
-			type: 'init',
-			modelPath: SSModelManager.modelPath,
-			vocabPath: SSModelManager.vocabPath,
-			wasmURL: 'chrome://semantic-search/content/lealla.wasm',
-			extraURL: 'chrome://semantic-search/content/model-extra.json',
-		});
+		let spec = this.space.spec;
+		let files = this.space.files;
+		w.worker.postMessage(spec.runtime === 'lealla'
+			? {
+				type: 'init',
+				runtime: 'lealla',
+				modelPath: files.modelPath,
+				vocabPath: files.vocabPath,
+				wasmURL: 'chrome://semantic-search/content/lealla.wasm',
+				extraURL: 'chrome://semantic-search/content/model-extra.json',
+			}
+			: {
+				type: 'init',
+				runtime: 'xlmr',
+				modelPath: files.modelPath,
+				vocabPath: files.vocabPath,
+				wasmURL: 'chrome://semantic-search/content/encoder.wasm',
+				queryPrefix: spec.queryPrefix,
+				passagePrefix: spec.passagePrefix,
+				chunkPieces: spec.chunkPieces,
+			});
 		// Don't leave an unhandled rejection if nobody awaits yet
 		w.ready.catch(() => {});
 		return w;
-	},
+	}
 
 	_call(w, message, transfer, onProgress) {
 		let id = this._nextID++;
@@ -69,7 +86,7 @@ var SSEmbedder = {
 			w.pending.set(id, { resolve, reject, onProgress });
 			w.worker.postMessage({ ...message, id }, transfer || []);
 		});
-	},
+	}
 
 	_terminate(w) {
 		if (w.timer) clearTimeout(w.timer);
@@ -80,18 +97,18 @@ var SSEmbedder = {
 		for (let p of w.pending.values()) p.reject(new Error('Worker terminated'));
 		w.pending.clear();
 		w.dead = true;
-	},
+	}
 
 	_scheduleIdle(w, ms, onIdle) {
 		if (w.timer) clearTimeout(w.timer);
 		w.timer = setTimeout(() => {
 			if (!w.busy && !w.dead) onIdle();
 		}, ms);
-	},
+	}
 
 	async _queryWorker() {
 		if (!this._query || this._query.dead) {
-			if (!(await SSModelManager.isReady())) {
+			if (!(await this.space.files.isReady())) {
 				throw new Error('The embedding model is not downloaded yet');
 			}
 			this._query = this._createWorker();
@@ -106,18 +123,18 @@ var SSEmbedder = {
 			throw e;
 		}
 		return w;
-	},
+	}
 
-	/** Warm up the query worker (loads ~80 MB of weights) */
+	/** Warm up the query worker (loads the encoder weights) */
 	async warmUp() {
 		let w = await this._queryWorker();
 		this._scheduleIdle(w, this.QUERY_IDLE_MS, () => {
 			this._terminate(w);
 			if (this._query === w) this._query = null;
 		});
-	},
+	}
 
-	/** @returns {Promise<Float32Array[]>} one normalised 256-d vector per text */
+	/** @returns {Promise<Float32Array[]>} one normalised vector per text */
 	async embed(texts) {
 		let w = await this._queryWorker();
 		w.busy = true;
@@ -125,7 +142,7 @@ var SSEmbedder = {
 			let m = await this._call(w, { type: 'embed', texts });
 			let out = [];
 			for (let i = 0; i < texts.length; i++) {
-				out.push(m.vectors.subarray(i * 256, (i + 1) * 256));
+				out.push(m.vectors.subarray(i * this.dim, (i + 1) * this.dim));
 			}
 			return out;
 		}
@@ -137,11 +154,11 @@ var SSEmbedder = {
 				if (this._query === w) this._query = null;
 			});
 		}
-	},
+	}
 
 	async embedOne(text) {
 		return (await this.embed([text]))[0];
-	},
+	}
 
 	/**
 	 * Embed a search query; long queries give one vector per segment.
@@ -154,7 +171,7 @@ var SSEmbedder = {
 			let m = await this._call(w, { type: 'query', text });
 			let vectors = [];
 			for (let i = 0; i < m.segments.length; i++) {
-				vectors.push(m.vectors.subarray(i * 256, (i + 1) * 256));
+				vectors.push(m.vectors.subarray(i * this.dim, (i + 1) * this.dim));
 			}
 			return { vectors, segments: m.segments };
 		}
@@ -166,7 +183,7 @@ var SSEmbedder = {
 				if (this._query === w) this._query = null;
 			});
 		}
-	},
+	}
 
 	async _acquire() {
 		for (;;) {
@@ -177,7 +194,7 @@ var SSEmbedder = {
 				return free;
 			}
 			if (this._pool.length < this.poolSize) {
-				if (!(await SSModelManager.isReady())) {
+				if (!(await this.space.files.isReady())) {
 					throw new Error('The embedding model is not downloaded yet');
 				}
 				let w = this._createWorker();
@@ -187,7 +204,7 @@ var SSEmbedder = {
 			}
 			await new Promise((resolve) => this._waiters.push(resolve));
 		}
-	},
+	}
 
 	_release(w) {
 		w.busy = false;
@@ -201,7 +218,7 @@ var SSEmbedder = {
 		}
 		let next = this._waiters.shift();
 		if (next) next();
-	},
+	}
 
 	/**
 	 * Chunk and embed a document.
@@ -229,7 +246,7 @@ var SSEmbedder = {
 		finally {
 			this._release(w);
 		}
-	},
+	}
 
 	shutdown() {
 		if (this._query) this._terminate(this._query);
@@ -238,5 +255,8 @@ var SSEmbedder = {
 		this._pool = [];
 		for (let r of this._waiters) r();
 		this._waiters = [];
-	},
+	}
 };
+
+/** The active model's workers */
+var SSEmbedder = SSActiveProxy(() => SSModels.active.embedder);

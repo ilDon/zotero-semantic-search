@@ -19,16 +19,26 @@
 	const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 	const SERVER_INFO = { name: 'zotero-semantic-search', title: 'Zotero Semantic Search', version: '2.1.0' };
 
-	const INSTRUCTIONS = `This server searches the user's Zotero library by meaning (not keywords).
-Every PDF in the library is split into passages and embedded with LEALLA-large, a
-multilingual (109 languages) sentence encoder; a query is embedded the same way and passages
+	/**
+	 * Server instructions. `model` describes the active embedding model:
+	 * {label, languages, paragraph, short} (similarity guidance); defaults to
+	 * LEALLA-large, the model of earlier versions.
+	 */
+	function instructions(model) {
+		const m = Object.assign({ label: 'LEALLA-large', languages: 109, paragraph: '0.6+', short: '0.45-0.55' }, model || {});
+		return `This server searches the user's Zotero library by meaning (not keywords).
+Every PDF in the library is split into passages and embedded with ${m.label}, a
+multilingual (${m.languages} languages) sentence encoder; a query is embedded the same way and passages
 are ranked by cosine similarity. Queries work best as a full sentence or short paragraph that
 states the idea you are looking for (e.g. a sentence from the user's draft), in any language.
-Similarity depends on query length: with paragraph-long queries 0.6+ is a good match; with
-short queries (a phrase or one sentence) 0.45-0.55 is already relevant. Passage text of
+Similarity depends on the model and on query length: with paragraph-long queries ${m.paragraph} is a good
+match; with short queries (a phrase or one sentence) ${m.short} is already relevant. Passage text of
 documents indexed by the old version of this tool is located approximately (text_is_approximate).
 Use semantic_search first, then get_passage for more context around a hit and get_item for
 bibliographic details. Cite works using the metadata returned by get_item.`;
+	}
+
+	const INSTRUCTIONS = instructions();
 
 	const TOOLS = [
 		{
@@ -42,7 +52,7 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 				properties: {
 					query: { type: 'string', description: 'A sentence or short paragraph expressing the concept to find (any language).' },
 					limit: { type: 'integer', minimum: 1, maximum: 100, default: 10, description: 'Maximum number of passages.' },
-					min_similarity: { type: 'number', minimum: 0, maximum: 1, description: 'Minimum cosine similarity (default 0.4).' },
+					min_similarity: { type: 'number', minimum: 0, maximum: 1, description: 'Minimum cosine similarity. The default depends on the embedding model (see the server instructions).' },
 					group_by_item: { type: 'boolean', default: false, description: 'Return at most one passage (the best) per document.' },
 					added_after: {
 						type: 'string',
@@ -183,11 +193,18 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 			switch (msg.method) {
 				case 'initialize': {
 					const requested = params.protocolVersion;
+					let instr = INSTRUCTIONS;
+					if (typeof service.instructions === 'function') {
+						try {
+							instr = (await service.instructions()) || INSTRUCTIONS;
+						}
+						catch (e) {} // e.g. the Claude Desktop bridge while Zotero is closed
+					}
 					result = {
 						protocolVersion: SUPPORTED_VERSIONS.includes(requested) ? requested : SUPPORTED_VERSIONS[0],
 						capabilities: { tools: { listChanged: false } },
 						serverInfo: SERVER_INFO,
-						instructions: INSTRUCTIONS,
+						instructions: instr,
 					};
 					break;
 				}
@@ -245,5 +262,5 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 		return handleOne(body, service);
 	}
 
-	return { handle, TOOLS, SUPPORTED_VERSIONS, SERVER_INFO };
+	return { handle, instructions, TOOLS, SUPPORTED_VERSIONS, SERVER_INFO };
 }));

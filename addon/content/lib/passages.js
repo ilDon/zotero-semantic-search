@@ -1,4 +1,4 @@
-/* global Zotero, IOUtils, PathUtils, SSStore, SSEmbedder */
+/* global Zotero, IOUtils, PathUtils, SSModels */
 /* exported SSPassages */
 
 /**
@@ -278,7 +278,9 @@ var SSPassages = {
 		let unique = [...new Set(starts)];
 		// The model only reads the first 128 tokens; ~900 chars are plenty
 		let texts = unique.map(s => ft.full.slice(s, s + 900).replace(/\s+/g, ' '));
-		let vecs = await SSEmbedder.embed(texts);
+		// Legacy sections only exist in the LEALLA-large database
+		let embedder = SSModels.space('lealla').embedder;
+		let vecs = await embedder.embed(texts);
 		let best = -2;
 		let bestStart = unique[0];
 		for (let i = 0; i < vecs.length; i++) {
@@ -298,7 +300,7 @@ var SSPassages = {
 		}
 		fine = [...new Set(fine)].filter(s => s !== bestStart);
 		if (fine.length) {
-			let fv = await SSEmbedder.embed(fine.map(s => ft.full.slice(s, s + 900).replace(/\s+/g, ' ')));
+			let fv = await embedder.embed(fine.map(s => ft.full.slice(s, s + 900).replace(/\s+/g, ' ')));
 			for (let i = 0; i < fv.length; i++) {
 				let d = 0;
 				for (let k = 0; k < 256; k++) d += fv[i][k] * storedVector[k];
@@ -323,13 +325,15 @@ var SSPassages = {
 	/**
 	 * Attach item metadata and passage text to results (in place).
 	 * @param {Object[]} results - history-format results
-	 * @param {Object} [opts] - {text: boolean} also load passage text
+	 * @param {Object} [opts] - {text: boolean} also load passage text;
+	 *   {model}: model of the results (default: the active one)
 	 */
 	async enrich(results, opts = {}) {
+		let store = SSModels.space(opts.model || SSModels.activeId).store;
 		// rowids for legacy history entries saved by the old app
 		let needLookup = results.filter(r => r.rowid === undefined);
 		if (needLookup.length) {
-			let found = await SSStore.findRowids(needLookup.map(r => [r.folder_id, r.section_number]));
+			let found = await store.findRowids(needLookup.map(r => [r.folder_id, r.section_number]));
 			for (let r of needLookup) {
 				let hit = found.get(r.folder_id + '\u0000' + r.section_number);
 				if (hit) {
@@ -339,7 +343,7 @@ var SSPassages = {
 			}
 		}
 		let rowids = results.map(r => r.rowid).filter(x => x !== undefined);
-		let info = rowids.length ? await SSStore.getChunkInfo(rowids) : new Map();
+		let info = rowids.length ? await store.getChunkInfo(rowids) : new Map();
 		let counts = new Map();
 		for (let r of results) {
 			let item = await this.getItemByKey(r.folder_id);
@@ -356,7 +360,7 @@ var SSPassages = {
 			}
 			else if (opts.text && item) {
 				if (!counts.has(r.folder_id)) {
-					counts.set(r.folder_id, await SSStore.countSections(r.folder_id));
+					counts.set(r.folder_id, await store.countSections(r.folder_id));
 				}
 				try {
 					let p = await this.legacyPassage(item, r.section_number, counts.get(r.folder_id),
