@@ -54,7 +54,10 @@
 					start: w.start,
 					end: w.end,
 					docStart: docOffset + w.start,
-					pieces: tokenizer.wordPiece(w.word).length,
+					// tokenizers that can count on the raw text do so (XLM-R); LEALLA counts its own word
+					pieces: tokenizer.countPieces
+						? tokenizer.countPieces(text.slice(w.start, w.end))
+						: tokenizer.wordPiece(w.word).length,
 					sentenceEnd: SENTENCE_END_RE.test(text.slice(w.start, w.end)),
 				});
 			}

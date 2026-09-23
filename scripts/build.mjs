@@ -1,7 +1,7 @@
 // Packages addon/ into build/zotero-semantic-search-<version>.xpi and the
 // Claude Desktop extension mcpb/ into build/zotero-semantic-search-<version>.mcpb
 // Usage: node scripts/build.mjs [--wasm] [--version X.Y.Z]
-//   --wasm     rebuild lealla.wasm with cargo first
+//   --wasm     rebuild lealla.wasm and encoder.wasm with cargo first
 //   --version  build with this version instead of the one in addon/manifest.json
 //              (used by the release workflow, which takes it from the git tag)
 import { execFileSync } from 'node:child_process';
@@ -20,10 +20,15 @@ if (process.argv.includes('--wasm')) {
 	execFileSync('cargo', ['build', '--release'], { cwd: join(root, 'wasm'), stdio: 'inherit' });
 	copyFileSync(join(root, 'wasm/target/wasm32-unknown-unknown/release/lealla_wasm.wasm'),
 		join(addon, 'content/lealla.wasm'));
+	execFileSync('cargo', ['build', '--release'], { cwd: join(root, 'wasm-encoder'), stdio: 'inherit' });
+	copyFileSync(join(root, 'wasm-encoder/target/wasm32-unknown-unknown/release/encoder_wasm.wasm'),
+		join(addon, 'content/encoder.wasm'));
 }
-if (!existsSync(join(addon, 'content/lealla.wasm'))) {
-	console.error('addon/content/lealla.wasm missing: run `node scripts/build.mjs --wasm`');
-	process.exit(1);
+for (const f of ['lealla.wasm', 'encoder.wasm']) {
+	if (!existsSync(join(addon, 'content', f))) {
+		console.error(`addon/content/${f} missing: run \`node scripts/build.mjs --wasm\``);
+		process.exit(1);
+	}
 }
 
 const manifest = JSON.parse(readFileSync(join(addon, 'manifest.json'), 'utf8'));
