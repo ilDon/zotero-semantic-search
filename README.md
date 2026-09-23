@@ -1,6 +1,6 @@
 # Zotero Semantic Search
 
-A Zotero 7–9 plugin that searches the **full text of the PDFs in your library by meaning**, not by keywords — and lets AI assistants on your computer do the same through a local **MCP** endpoint.
+A Zotero 7–10 plugin that searches the **full text of the PDFs in your library by meaning**, not by keywords — and lets AI assistants on your computer do the same through a local **MCP** endpoint.
 
 Write a concept, a sentence or a whole paragraph of your draft; the plugin returns the passages of your PDFs whose meaning is closest, ranked by cosine similarity, linked to their Zotero items and pages.
 

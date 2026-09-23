@@ -17,7 +17,7 @@
 	'use strict';
 
 	const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
-	const SERVER_INFO = { name: 'zotero-semantic-search', title: 'Zotero Semantic Search', version: '2.0.0' };
+	const SERVER_INFO = { name: 'zotero-semantic-search', title: 'Zotero Semantic Search', version: '2.0.1' };
 
 	const INSTRUCTIONS = `This server searches the user's Zotero library by meaning (not keywords).
 Every PDF in the library is split into passages and embedded with LEALLA-large, a
