@@ -21,7 +21,8 @@ Semantic search compares **meanings**. Every passage of every PDF in your librar
 ## Features
 
 - 🔎 **Search by meaning** across the full text of all your PDFs. Queries can be a phrase, a sentence or a whole paragraph.
-- 🌍 **Multilingual**: 109 languages, including across languages (an English query finds Italian, Spanish or German passages).
+- 🌍 **Multilingual**: 74 to 109 languages depending on the model, including across languages (an English query finds Italian, Spanish or German passages).
+- 🧠 **Choose your model**: Multilingual E5 small (default), Arctic Embed M v2 for the highest accuracy, or LEALLA-large, the model of the original app. Switching re-indexes in the background while you keep searching.
 - ⚡ **Fast**: searching half a million passages takes about 0.15 s.
 - 📌 **Wired into Zotero**: every result is linked to its Zotero item. Open the PDF at the right page, jump to the item in your library, copy a formatted citation, or save the results as a collection.
 - 🏷️ **Filter by item type and date added**: books, journal articles, theses… in any combination, and only items added to Zotero since a given date. Works on new and saved searches.
@@ -37,7 +38,7 @@ Semantic search compares **meanings**. Every passage of every PDF in your librar
 
 1. **Install**: download the `.xpi` from the [latest release](https://github.com/ilDon/zotero-semantic-search/releases/latest). In Zotero go to *Tools → Plugins*, click the gear icon, choose *Install Plugin From File…* and select the file.
 2. **Open** *Tools → Semantic Search…* (<kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd> on macOS, <kbd>Ctrl</kbd><kbd>⇧</kbd><kbd>E</kbd> on Windows/Linux).
-3. **Download the model** when asked. This happens once: about 590 MB from Hugging Face, checksum-verified, stored in your Zotero profile.
+3. **Download the model** when asked. This happens once: about 130 MB for the default model, checksum-verified, stored in your Zotero profile.
 4. **Let it index.** All your PDFs are indexed in the background; progress appears at the bottom of the sidebar. A journal article takes a few seconds, a long book a minute or two. You can search while it runs, and later PDFs are picked up automatically.
 5. **Search.** Type or paste your text and press <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd>.
 
@@ -46,7 +47,25 @@ Semantic search compares **meanings**. Every passage of every PDF in your librar
 - **Write sentences, not keywords.** The best query is often a sentence or a paragraph from what you are writing: the plugin finds the passages that make, support or discuss the same point.
 - **Long paragraphs are fine.** Each sentence is matched on its own. When a result matches one specific part of your text, it says which one (*matches: "…"*).
 - **Use any language.** Your query and your sources do not need to be in the same language.
-- **Adjust the minimum similarity.** Similarity goes from 0 to 1. The default of 0.60 suits paragraph-long queries; for a single short sentence, 0.45–0.55 usually gives better results. Scores above ~0.7 are very close matches.
+- **Adjust the minimum similarity.** Similarity goes from 0 to 1, but every model has its own scale: the defaults (0.87 for E5, 0.58 for Arctic, 0.60 for LEALLA) suit paragraph-long queries; for a single short sentence, lower them a little (about 0.84, 0.50 and 0.50).
+
+## Choosing the embedding model
+
+The model turns every passage and every query into a vector. Pick it in *Zotero → Settings → Semantic Search*:
+
+| Model | Languages | Accuracy¹ | Indexing speed | Download |
+| --- | --- | --- | --- | --- |
+| **Multilingual E5 small** (default) | ~100 | 0.87 | fastest | 128 MB |
+| **Arctic Embed M v2** | 74 | 0.91 (best, also across languages) | ~3× slower than E5 | 316 MB |
+| **LEALLA-large** | 109 | 0.73 | about as fast as E5 | 595 MB |
+
+¹ Mean reciprocal rank when searching a real library of legal and computer-science books and papers (in several languages) for the document an abstract comes from; 1 = always first.
+
+- **E5** is the right choice for most libraries. **Arctic** is the most accurate, especially when your query and your sources are in different languages, if you can wait for a longer first indexing. **LEALLA** is the model of the original app: libraries indexed with it keep working as they are.
+- **Switching** downloads the new model and indexes all your PDFs again, in the background. Until that is done, searches keep using the current model; you can also switch right away and search the documents indexed so far. On a large library the first indexing can take many hours (it resumes after a restart).
+- **Every model keeps its own index**, so switching back is instant (only PDFs added meanwhile are indexed). Indexes you no longer need can be deleted in the settings.
+- Saved searches remember the model they were made with. Open one made with another model and click *Search again with …* to run it with the current model: your *Cited* / *Irrelevant* marks are carried over to the passages on the same pages.
+- The models run in int8 inside Zotero (WebAssembly), with no measurable loss of accuracy compared with the original models.
 
 ## Working with results
 
@@ -115,7 +134,8 @@ ocrmypdf must be installed (`brew install ocrmypdf` on macOS; see its docs for W
 
 *Zotero → Settings → Semantic Search*
 
-- **Minimum similarity** and **maximum number of results**
+- **Embedding model**, the progress of a model switch, and the indexes on disk
+- **Minimum similarity** (per model) and **maximum number of results**
 - **Automatically index new PDFs**, and the number of **parallel indexing workers** (more workers index faster but use more memory, ~150 MB each while indexing)
 - **OCR languages**
 - **MCP server** on/off, with ready-to-copy configuration for Claude Code and other MCP clients
@@ -125,36 +145,38 @@ ocrmypdf must be installed (`brew install ocrmypdf` on macOS; see its docs for W
 
 Everything happens on your computer: text extraction, embeddings, search and the MCP server. The only network requests are:
 
-- the one-time model download from Hugging Face (pinned version, checksum-verified);
+- the one-time model download (from this project's GitHub releases, or from Hugging Face for LEALLA-large; pinned versions, checksum-verified);
 - Zotero's periodic check for plugin updates on GitHub.
 
 ## FAQ
 
 **Where is the index stored?**
-In `file_embeddings.db`, next to `zotero.sqlite` in your Zotero data directory. The model and a small cache live in your Zotero profile. If you sync your data directory (e.g. with Dropbox), the index goes with it.
+Next to `zotero.sqlite` in your Zotero data directory: one database per model (`file_embeddings_e5-small.db`, `file_embeddings_arctic-m-v2.db`, `file_embeddings_lealla.db`) and `semantic_search.db` with your saved searches and excluded documents. The models and a small cache live in your Zotero profile. If you sync your data directory (e.g. with Dropbox), the indexes go with it: update the plugin on all your computers.
 
 **Why is one of my PDFs not in the results?**
 Look at the item pane or at *Excluded documents*. PDFs without text (scans) can be fixed with *Run OCR*; encrypted PDFs cannot be read.
 
-**What model does it use?**
-[LEALLA-large](https://huggingface.co/setu4993/LEALLA-large), a compact multilingual sentence encoder from Google (109 languages). It runs inside Zotero via WebAssembly, with no Python, server or GPU needed.
+**What models does it use?**
+[multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small) (Microsoft), [snowflake-arctic-embed-m-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-m-v2.0) (Snowflake, used with 256-dimensional vectors) and [LEALLA-large](https://huggingface.co/setu4993/LEALLA-large) (Google). They run inside Zotero via WebAssembly, with no Python, server or GPU needed.
 
 **I used the original Python version of this project. Do I lose my index?**
-No. The plugin reads the existing `file_embeddings.db` as is, including the saved searches and excluded documents, and only indexes PDFs added since.
+No. The plugin keeps using your index with LEALLA-large, only indexing PDFs added since: `file_embeddings.db` is renamed `file_embeddings_lealla.db` (its content is unchanged) and your saved searches and excluded documents are copied to `semantic_search.db`. You can then switch to a better model whenever you like.
 
 ## For developers
 
 ```bash
-npm test                        # unit tests (tokenizer and encoder vs. the reference model, chunker, MCP, scan kernel)
+npm test                        # unit tests (tokenizers and encoders vs. the reference models, chunker, MCP, scan kernels)
 node scripts/build.mjs          # build build/zotero-semantic-search-<version>.xpi
-node scripts/build.mjs --wasm   # also rebuild the WebAssembly encoder (Rust, wasm32-unknown-unknown)
+node scripts/build.mjs --wasm   # also rebuild the WebAssembly encoders (Rust, wasm32-unknown-unknown)
 ```
 
 - `addon/` is the plugin: `content/lib/` holds the services (indexing, vector index, search, MCP), `content/ui/` the windows, `locale/` the English and Italian strings.
 - `mcpb/` is the Claude Desktop extension: a dependency-free stdio bridge to the plugin's local MCP endpoint.
-- `wasm/` is the LEALLA-large forward pass and the int8 vector scan in Rust, compiled to WebAssembly SIMD.
-- `tools/` has the scripts used to check the encoder against the original TensorFlow model.
-- Model-dependent tests need `.model/model.safetensors` and `.model/vocab.txt` (or `MODEL_DIR`).
+- `wasm/` is the LEALLA-large forward pass and the int8 vector scan in Rust, compiled to WebAssembly SIMD (frozen: LEALLA results stay bit-for-bit identical).
+- `wasm-encoder/` is the int8 encoder of the other models (BERT and GTE architectures, int8 weights per channel and activations per token) and a vector scan of any dimension.
+- `tools/` has the scripts used to check LEALLA against the original TensorFlow model, and `quantize_encoder.py`, which builds the int8 weight files (`.ssew`) and tokenizer of the other models and the test oracles.
+- Model-dependent tests need `.model/model.safetensors` and `.model/vocab.txt` (or `MODEL_DIR`) for LEALLA, and the output of `tools/quantize_encoder.py` in `.models/` (or `XLMR_DIR`) for the others.
+- The int8 weight files are published once in the `models-1` release; new model versions go in a new release (`models-2`, …) referenced by `addon/content/lib/models.js`.
 - To run from source, put a file named `semantic-search@ildon.github.io`, containing the absolute path of `addon/`, in your Zotero profile's `extensions/` folder.
 
 **Releasing**: push a tag `vX.Y.Z` on a commit of `master`. The *Release* workflow runs the tests, builds the XPI and the Claude Desktop extension with that version and publishes a GitHub release with both and `updates.json`, from which installed copies update themselves.

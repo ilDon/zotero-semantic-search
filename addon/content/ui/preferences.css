@@ -56,3 +56,42 @@
 	font-size: 11.5px;
 	overflow-wrap: anywhere;
 }
+
+#semsearch-prefpane .ss-build {
+	margin-block: 6px;
+	padding: 8px 10px;
+	border-radius: 6px;
+	border: 1px solid rgba(127, 127, 127, 0.3);
+}
+
+#semsearch-prefpane .ss-build progress {
+	width: 100%;
+}
+
+#semsearch-prefpane .ss-indexes {
+	margin-block: 6px;
+}
+
+#semsearch-prefpane .ss-index-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-block: 3px;
+}
+
+#semsearch-prefpane .ss-index-row .ss-in-use {
+	color: var(--fill-secondary);
+	font-style: italic;
+}
+
+#semsearch-prefpane .ss-warning {
+	margin-block: 6px;
+	padding: 8px 10px;
+	border-radius: 6px;
+	background: rgba(255, 170, 0, 0.15);
+	line-height: 1.4;
+}
+
+#semsearch-prefpane .ss-warning button {
+	margin-top: 6px;
+}
