@@ -81,17 +81,11 @@ The plugin includes a [Model Context Protocol](https://modelcontextprotocol.io) 
 claude mcp add --scope user --transport http zotero http://127.0.0.1:23119/semantic-search/mcp
 ```
 
-**Claude Desktop** (`claude_desktop_config.json`, via [mcp-remote](https://www.npmjs.com/package/mcp-remote))
+**Claude Desktop**: download `zotero-semantic-search-<version>.mcpb` from the [latest release](https://github.com/ilDon/zotero-semantic-search/releases/latest) and double-click it (or drag it into *Settings → Extensions*). This desktop extension runs on your computer and talks to Zotero locally.
 
-```json
-{
-  "mcpServers": {
-    "zotero": { "command": "npx", "args": ["-y", "mcp-remote", "http://127.0.0.1:23119/semantic-search/mcp"] }
-  }
-}
-```
+> Don't add the URL as a *custom connector* in Claude: custom connectors are reached from Anthropic's servers and require a public `https://` address, so they cannot reach Zotero on your computer (and you should not expose your library to the internet).
 
-Any other MCP client can use the same URL (Streamable HTTP transport). The exact snippets are also shown in the plugin's preferences.
+**Other MCP clients** can connect directly to `http://127.0.0.1:23119/semantic-search/mcp` (Streamable HTTP transport), or through [mcp-remote](https://www.npmjs.com/package/mcp-remote) if they only support stdio. The snippets are also shown in the plugin's preferences.
 
 Then just ask, for example:
 
@@ -123,7 +117,7 @@ ocrmypdf must be installed (`brew install ocrmypdf` on macOS; see its docs for W
 - **Minimum similarity** and **maximum number of results**
 - **Automatically index new PDFs**, and the number of **parallel indexing workers** (more workers index faster but use more memory, ~150 MB each while indexing)
 - **OCR languages**
-- **MCP server** on/off, with ready-to-copy configuration for Claude Code and Claude Desktop
+- **MCP server** on/off, with ready-to-copy configuration for Claude Code and other MCP clients
 - Model status, and maintenance actions
 
 ## Privacy
@@ -156,12 +150,13 @@ node scripts/build.mjs --wasm   # also rebuild the WebAssembly encoder (Rust, wa
 ```
 
 - `addon/` is the plugin: `content/lib/` holds the services (indexing, vector index, search, MCP), `content/ui/` the windows, `locale/` the English and Italian strings.
+- `mcpb/` is the Claude Desktop extension: a dependency-free stdio bridge to the plugin's local MCP endpoint.
 - `wasm/` is the LEALLA-large forward pass and the int8 vector scan in Rust, compiled to WebAssembly SIMD.
 - `tools/` has the scripts used to check the encoder against the original TensorFlow model.
 - Model-dependent tests need `.model/model.safetensors` and `.model/vocab.txt` (or `MODEL_DIR`).
 - To run from source, put a file named `semantic-search@ildon.github.io`, containing the absolute path of `addon/`, in your Zotero profile's `extensions/` folder.
 
-**Releasing**: push a tag `vX.Y.Z` on a commit of `master`. The *Release* workflow runs the tests, builds the XPI with that version and publishes a GitHub release with the XPI and `updates.json`, from which installed copies update themselves.
+**Releasing**: push a tag `vX.Y.Z` on a commit of `master`. The *Release* workflow runs the tests, builds the XPI and the Claude Desktop extension with that version and publishes a GitHub release with both and `updates.json`, from which installed copies update themselves.
 
 ```bash
 git tag v2.3.0 && git push origin v2.3.0
