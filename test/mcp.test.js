@@ -82,3 +82,14 @@ test('batches return one response per request', async () => {
 	assert.strictEqual(r.length, 2);
 	assert.deepStrictEqual(r.map(x => x.id), [1, 2]);
 });
+
+test('added_after is validated and passed to the service', async () => {
+	let r = await handle(rpc('tools/call', { name: 'semantic_search', arguments: { query: 'abc', added_after: '31/01/2024' } }), service);
+	assert.strictEqual(r.result.isError, true);
+	assert.match(r.result.content[0].text, /YYYY-MM-DD/);
+	r = await handle(rpc('tools/call', { name: 'semantic_search', arguments: { query: 'abc', added_after: '2024-01-31' } }), service);
+	assert.ok(!r.result.isError);
+	assert.strictEqual(calls[calls.length - 1][1].added_after, '2024-01-31');
+	const tool = TOOLS.find(t => t.name === 'semantic_search');
+	assert.strictEqual(tool.inputSchema.properties.added_after.type, 'string');
+});

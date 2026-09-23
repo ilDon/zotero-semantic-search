@@ -151,3 +151,11 @@ semsearch-type-filter-reset = Mostra tutti i tipi
 semsearch-ocr = Esegui OCR
 semsearch-ocr-running = OCR in corso nel terminale…
 semsearch-prefs-ocr-languages = Lingue OCR (codici tesseract, es. ita+eng):
+
+semsearch-date-filter-any = Aggiunti: sempre
+semsearch-date-filter-since = Aggiunti dal { $date }
+semsearch-date-filter-label = Solo elementi aggiunti a Zotero a partire dal:
+semsearch-date-filter-1m = Ultimo mese
+semsearch-date-filter-6m = Ultimi 6 mesi
+semsearch-date-filter-1y = Ultimo anno
+semsearch-date-filter-reset = Qualsiasi data

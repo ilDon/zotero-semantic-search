@@ -24,7 +24,7 @@ Semantic search compares **meanings**. Every passage of every PDF in your librar
 - 🌍 **Multilingual**: 109 languages, including across languages (an English query finds Italian, Spanish or German passages).
 - ⚡ **Fast**: searching half a million passages takes about 0.15 s.
 - 📌 **Wired into Zotero**: every result is linked to its Zotero item. Open the PDF at the right page, jump to the item in your library, copy a formatted citation, or save the results as a collection.
-- 🏷️ **Filter by item type**: books, journal articles, book sections, theses… any combination, on new and saved searches.
+- 🏷️ **Filter by item type and date added**: books, journal articles, theses… in any combination, and only items added to Zotero since a given date. Works on new and saved searches.
 - 🗂️ **Saved searches and review workflow**: every search is kept in the sidebar and reopens instantly. Mark each passage as *To review*, *Cited* or *Irrelevant*.
 - 🔄 **Always up to date**: new PDFs are indexed automatically in the background.
 - 🧭 **Similar documents**: the item pane shows which documents in your library are closest in content to the selected one.
@@ -58,6 +58,7 @@ Semantic search compares **meanings**. Every passage of every PDF in your librar
 | **Copy prompt** | Copies a ready-made prompt asking an LLM how the passage supports your text |
 | **To review / Cited / Irrelevant** | Marks the passage; marks are saved with the search |
 | **Type** filter | Keeps only the selected item types; nothing selected = everything |
+| **Added** filter | Keeps only items added to Zotero on or after a date (or in the last month, 6 months, year) |
 | **Group by document** | Shows one card per document, with all its matching passages |
 | **Save as collection** | Creates a Zotero collection with the items in the results |
 | **Copy list** | Copies the list of documents, with pages and scores |
@@ -95,7 +96,7 @@ Then just ask, for example:
 
 | Tool | Description |
 | --- | --- |
-| `semantic_search` | Passages closest in meaning to a query, with item metadata, item type, page and text. Optional filters: `min_similarity`, `item_types`, `group_by_item` |
+| `semantic_search` | Passages closest in meaning to a query, with item metadata, item type, page and text. Optional filters: `min_similarity`, `item_types`, `added_after` (items added to Zotero since a date; applied before ranking), `group_by_item` |
 | `get_passage` | The text around a result, for more context |
 | `get_item` | Full bibliographic data and a formatted citation |
 | `find_similar_items` | Documents most similar to a given one |

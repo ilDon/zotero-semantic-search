@@ -103,6 +103,7 @@ var SSMcpEndpoint = {
 			authors: r.authors || [],
 			year: r.year || null,
 			item_type: r.itemType || null,
+			date_added: r.dateAdded ? r.dateAdded.slice(0, 10) : null,
 			item_key: r.itemKey || null,
 			attachment_key: r.folder_id,
 			section: r.section_number,
@@ -121,7 +122,23 @@ var SSMcpEndpoint = {
 	service: {
 		async search(args) {
 			let limit = Math.min(100, Math.max(1, parseInt(args.limit) || 10));
+			// Date filter: restrict the search itself to items added since that date
+			let keys;
+			if (args.added_after !== undefined) {
+				let since = SSPassages.sinceToUTC(args.added_after);
+				if (!since) throw new Error('added_after must be a valid date in the form YYYY-MM-DD');
+				keys = await SSPassages.attachmentKeysAddedSince(since);
+				if (!keys.length) {
+					return {
+						query: args.query,
+						total_matches: 0,
+						results: [],
+						note: `No PDF in the library was added on or after ${args.added_after}.`,
+					};
+				}
+			}
 			let res = await SSSearch.search(args.query, {
+				keys,
 				// Short LLM queries score lower than the paragraph-long queries of the UI
 				minSimilarity: typeof args.min_similarity === 'number' ? args.min_similarity : SSMcpEndpoint.DEFAULT_MIN_SIMILARITY,
 				// Saved UI searches use the stricter UI threshold: only reuse them on request

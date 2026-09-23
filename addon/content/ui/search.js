@@ -24,6 +24,7 @@ var SemanticSearchWindow = {
 	_textBusy: 0,
 	_searchSeq: 0,
 	typeFilter: new Set(), // Zotero item type names; empty = all types
+	addedSince: null, // {date: 'YYYY-MM-DD', utc: 'YYYY-MM-DD HH:MM:SS'}: only items added since then
 
 	$(id) {
 		return document.getElementById(id);
@@ -82,13 +83,33 @@ var SemanticSearchWindow = {
 			e.stopPropagation();
 			let popup = this.$('type-filter-popup');
 			popup.hidden = !popup.hidden;
+			this.$('date-filter-popup').hidden = true;
 		});
 		this.$('type-filter-popup').addEventListener('click', e => e.stopPropagation());
-		document.addEventListener('click', () => {
+		this.$('date-filter-button').addEventListener('click', (e) => {
+			e.stopPropagation();
+			let popup = this.$('date-filter-popup');
+			popup.hidden = !popup.hidden;
 			this.$('type-filter-popup').hidden = true;
 		});
+		this.$('date-filter-popup').addEventListener('click', e => e.stopPropagation());
+		this.$('date-filter-input').addEventListener('change', () => this.setAddedSince(this.$('date-filter-input').value));
+		for (let b of document.querySelectorAll('.date-presets button')) {
+			b.addEventListener('click', () => {
+				let d = new Date();
+				d.setMonth(d.getMonth() - parseInt(b.dataset.months));
+				let pad = n => String(n).padStart(2, '0');
+				this.setAddedSince(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+			});
+		}
+		this.$('date-filter-reset').addEventListener('click', () => this.setAddedSince(null));
+		let closePopups = () => {
+			this.$('type-filter-popup').hidden = true;
+			this.$('date-filter-popup').hidden = true;
+		};
+		document.addEventListener('click', closePopups);
 		document.addEventListener('keydown', (e) => {
-			if (e.key === 'Escape') this.$('type-filter-popup').hidden = true;
+			if (e.key === 'Escape') closePopups();
 		});
 
 		this._observer = new IntersectionObserver((entries) => {
@@ -435,6 +456,7 @@ var SemanticSearchWindow = {
 		let f = this.$('status-filter').value;
 		let results = this.current ? this.current.results : [];
 		if (this.typeFilter.size) results = results.filter(r => this.typeFilter.has(r.itemType));
+		if (this.addedSince) results = results.filter(r => r.dateAdded && r.dateAdded >= this.addedSince.utc);
 		if (f === 'all') return results;
 		if (f === 'hide-irrelevant') return results.filter(r => (r.status || 0) !== STATUS.irrelevant);
 		let s = parseInt(f);
@@ -463,6 +485,7 @@ var SemanticSearchWindow = {
 		this.$('results-summary').replaceChildren(...summary);
 		this.$('rerun-button').hidden = !this.current.fromCache;
 		this._renderTypeFilter();
+		this._renderDateFilter();
 		header.hidden = false;
 
 		if (!this.current.results.length) {
@@ -537,6 +560,28 @@ var SemanticSearchWindow = {
 			},
 		});
 		popup.replaceChildren(...rows, reset);
+	},
+
+	/** Only show items added to Zotero on or after `date` (YYYY-MM-DD, local); null = any time */
+	setAddedSince(date) {
+		let utc = date ? this.S.passages.sinceToUTC(date) : null;
+		this.addedSince = utc ? { date, utc } : null;
+		this.renderResults();
+	},
+
+	_renderDateFilter() {
+		let button = this.$('date-filter-button');
+		if (this.addedSince) {
+			let d = new Date(this.addedSince.date + 'T00:00:00');
+			document.l10n.setAttributes(button, 'semsearch-date-filter-since', { date: d.toLocaleDateString() });
+			button.classList.add('active');
+		}
+		else {
+			document.l10n.setAttributes(button, 'semsearch-date-filter-any');
+			button.classList.remove('active');
+		}
+		this.$('date-filter-input').value = this.addedSince ? this.addedSince.date : '';
+		this.$('date-filter-reset').disabled = !this.addedSince;
 	},
 
 	_strength(sim) {
