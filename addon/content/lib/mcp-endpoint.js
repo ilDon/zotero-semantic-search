@@ -23,6 +23,8 @@ var SSMcpEndpoint = {
 	},
 
 	register() {
+		let version = Zotero.SemanticSearch && Zotero.SemanticSearch.plugin && Zotero.SemanticSearch.plugin.version;
+		if (version) SSMcp.SERVER_INFO.version = version;
 		let codes = Zotero.Server.responseCodes;
 		if (!codes[202]) codes[202] = 'Accepted';
 		if (!codes[405]) codes[405] = 'Method Not Allowed';

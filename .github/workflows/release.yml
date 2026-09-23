@@ -1,0 +1,60 @@
+name: Release
+
+# Push a tag like v2.2.0 on a commit of master: the plugin is built with that
+# version and published as a GitHub release, together with the updates.json that
+# installed copies of the plugin check for automatic updates.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the tag
+        id: tag
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag $TAG is not of the form vX.Y.Z"; exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Tag $TAG does not point to a commit on master"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          node scripts/build.mjs --version "$VERSION"
+          XPI="build/zotero-semantic-search-$VERSION.xpi"
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/zotero-semantic-search-$VERSION.xpi"
+          node scripts/updates-json.mjs "$XPI" "$VERSION" "$URL" build/updates.json
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          gh release create "$GITHUB_REF_NAME" \
+            "build/zotero-semantic-search-$VERSION.xpi" \
+            build/updates.json \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag
