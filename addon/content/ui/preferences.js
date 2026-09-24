@@ -235,9 +235,11 @@ window.SemanticSearchPrefs = {
 			}
 		}
 
-		// indexes on disk
+		// indexes on disk (redrawn only when something changed, translated before
+		// being shown: this runs every half second while indexing)
 		let list = this.$('semsearch-indexes');
 		let indexes = await models.indexes();
+		let signature = JSON.stringify(indexes.map(ix => [ix.id, this._formatSize(ix.size), ix.active, ix.building]));
 		let rows = [];
 		if (indexes.length) {
 			let title = document.createElement('div');
@@ -278,7 +280,14 @@ window.SemanticSearchPrefs = {
 			}
 			rows.push(row);
 		}
-		list.replaceChildren(...rows);
+		if (signature !== this._indexesSignature) {
+			this._indexesSignature = signature;
+			try {
+				await document.l10n.translateElements(rows.flatMap(r => [r, ...r.querySelectorAll('[data-l10n-id]')]));
+			}
+			catch (e) {}
+			list.replaceChildren(...rows);
+		}
 
 		let notice = this.S.store.migrationNotice;
 		let box2 = this.$('semsearch-migration-notice');
