@@ -112,6 +112,19 @@ window {
 	font-variant-numeric: tabular-nums;
 }
 
+.history-model {
+	margin-inline-start: 6px;
+	padding: 0 5px;
+	border: 1px solid currentColor;
+	border-radius: 8px;
+	font-size: 10px;
+	opacity: 0.8;
+}
+
+.other-model {
+	font-style: italic;
+}
+
 .history-delete {
 	appearance: none;
 	position: absolute;

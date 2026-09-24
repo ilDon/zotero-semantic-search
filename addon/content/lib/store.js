@@ -1,30 +1,32 @@
-/* global Zotero, ChromeUtils, IOUtils, PathUtils */
+/* global Zotero, ChromeUtils, IOUtils, PathUtils, SSModels */
 /* exported SSStore */
 
 /**
- * Access to file_embeddings.db — the SQLite database created by the original
- * Python app, kept in the Zotero data directory.
+ * The user's own data: saved searches, excluded documents and plugin state,
+ * in semantic_search.db next to zotero.sqlite. The passages and vectors of
+ * each embedding model live in their own database (see embedding-store.js);
+ * the embedding methods below act on the active model's database.
  *
- * Legacy schema (kept as is, so existing databases keep working):
- *   embeddings(id TEXT, date TEXT, file_name TEXT, section_number INTEGER, embedding TEXT)
- *     id = attachment key (= storage folder name), embedding = JSON array of 256 floats
+ *   history(id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT, model TEXT)
+ *     id = sha256(query) for LEALLA-large (as in the original app),
+ *          sha256(model + "\n" + query) for the other models
  *   excluded(id TEXT, date TEXT, reason TEXT)
- *   history(id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT)
- *     id = sha256(query), query_embedding = JSON [[256 floats]], results = JSON list
+ *   ss_meta(key TEXT PRIMARY KEY, value TEXT)
  *
- * Additive changes made here:
- *   embeddings.scheme (NULL = legacy 2500-char sections, 2 = 128-token passages),
- *   embeddings.chunk_text, embeddings.page (0-based), embeddings.char_start,
- *   indexes on embeddings(id), excluded(id), history(id), table ss_meta.
+ * Migration from earlier versions, which kept everything in
+ * file_embeddings.db: the file is renamed file_embeddings_lealla.db (it stays
+ * the LEALLA passage database, in its original format) and its history,
+ * excluded and ss_meta rows are copied here.
  */
 var SSStore = {
+	FILE: 'semantic_search.db',
 	_conn: null,
 	_path: null,
 	_opening: null,
+	migrationNotice: null, // set when a stray legacy database was found
 
 	get path() {
-		let custom = Zotero.Prefs.get('extensions.semantic-search.dbPath', true);
-		return custom || PathUtils.join(Zotero.DataDirectory.dir, 'file_embeddings.db');
+		return PathUtils.join(SSModels.dataDir, this.FILE);
 	},
 
 	async open() {
@@ -33,9 +35,12 @@ var SSStore = {
 		this._opening = (async () => {
 			if (this._conn) await this.close();
 			const { Sqlite } = ChromeUtils.importESModule('resource://gre/modules/Sqlite.sys.mjs');
+			await this.migrateFiles(SSModels.dataDir);
 			let path = this.path;
+			let isNew = !(await IOUtils.exists(path));
 			let conn = await Sqlite.openConnection({ path });
-			await this._migrate(conn);
+			await this._createTables(conn);
+			if (isNew) await this._importLegacy(conn);
 			this._conn = conn;
 			this._path = path;
 			return conn;
@@ -56,38 +61,73 @@ var SSStore = {
 		}
 	},
 
-	async _migrate(conn) {
-		await conn.execute(`CREATE TABLE IF NOT EXISTS embeddings (
-			id TEXT, date TEXT, file_name TEXT, section_number INTEGER, embedding TEXT)`);
+	async _createTables(conn) {
 		await conn.execute('CREATE TABLE IF NOT EXISTS excluded (id TEXT, date TEXT, reason TEXT)');
 		await conn.execute(`CREATE TABLE IF NOT EXISTS history (
-			id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT)`);
+			id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT, model TEXT)`);
 		await conn.execute('CREATE TABLE IF NOT EXISTS ss_meta (key TEXT PRIMARY KEY, value TEXT)');
-		let cols = (await conn.execute('PRAGMA table_info(embeddings)')).map(r => r.getResultByName('name'));
-		for (let [name, type] of [['scheme', 'INTEGER'], ['chunk_text', 'TEXT'], ['page', 'INTEGER'], ['char_start', 'INTEGER']]) {
-			if (!cols.includes(name)) {
-				await conn.execute(`ALTER TABLE embeddings ADD COLUMN ${name} ${type}`);
-			}
-		}
 		await conn.execute('CREATE INDEX IF NOT EXISTS ss_excluded_id ON excluded(id)');
 		await conn.execute('CREATE INDEX IF NOT EXISTS ss_history_id ON history(id)');
 	},
 
 	/**
-	 * The index on embeddings(id) makes per-document operations and rowid scans
-	 * fast. Building it reads the whole (possibly multi-GB) table once.
+	 * Rename file_embeddings.db to file_embeddings_lealla.db (once).
+	 * Not done when a custom database path is set (that path is the LEALLA database).
 	 */
-	async hasIdIndex() {
-		let conn = await this.open();
-		let rows = await conn.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='ss_embeddings_id'");
-		return rows.length > 0;
+	async migrateFiles(dir) {
+		if (Zotero.Prefs.get('extensions.semantic-search.dbPath', true)) return;
+		let spec = SSModels.registry.lealla;
+		let legacy = PathUtils.join(dir, spec.legacyDbFile);
+		let target = PathUtils.join(dir, spec.dbFile);
+		if (!(await IOUtils.exists(legacy))) return;
+		if (await IOUtils.exists(target)) {
+			// Probably recreated by an older version of the plugin on another computer
+			// sharing this data directory: leave both alone and tell the user
+			this.migrationNotice = { legacy, target };
+			Zotero.debug(`Semantic Search: both ${legacy} and ${target} exist; using the latter`);
+			return;
+		}
+		// A leftover journal means an interrupted transaction: let SQLite recover it first
+		if (await IOUtils.exists(legacy + '-journal') || await IOUtils.exists(legacy + '-wal')) {
+			const { Sqlite } = ChromeUtils.importESModule('resource://gre/modules/Sqlite.sys.mjs');
+			let c = await Sqlite.openConnection({ path: legacy });
+			await c.execute('SELECT count(*) FROM sqlite_master');
+			await c.close();
+		}
+		await IOUtils.move(legacy, target, { noOverwrite: true });
+		Zotero.debug(`Semantic Search: renamed ${legacy} to ${target}`);
 	},
 
-	async ensureIdIndex() {
-		let conn = await this.open();
-		if (await this.hasIdIndex()) return false;
-		await conn.execute('CREATE INDEX IF NOT EXISTS ss_embeddings_id ON embeddings(id)');
-		return true;
+	/** Copy searches, exclusions and state from the LEALLA database (earlier versions) */
+	async _importLegacy(conn) {
+		let lealla = SSModels.dbPath('lealla');
+		if (!(await IOUtils.exists(lealla))) return;
+		try {
+			await conn.execute('ATTACH DATABASE ? AS legacy', [lealla]);
+			try {
+				let tables = (await conn.execute("SELECT name FROM legacy.sqlite_master WHERE type = 'table'"))
+					.map(r => r.getResultByIndex(0));
+				await conn.executeTransaction(async () => {
+					if (tables.includes('history')) {
+						await conn.execute(`INSERT INTO history (id, date, query, query_embedding, results, model)
+							SELECT id, date, query, query_embedding, results, 'lealla' FROM legacy.history ORDER BY rowid`);
+					}
+					if (tables.includes('excluded')) {
+						await conn.execute('INSERT INTO excluded (id, date, reason) SELECT id, date, reason FROM legacy.excluded ORDER BY rowid');
+					}
+					if (tables.includes('ss_meta')) {
+						await conn.execute('INSERT OR REPLACE INTO ss_meta (key, value) SELECT key, value FROM legacy.ss_meta');
+					}
+				});
+			}
+			finally {
+				await conn.execute('DETACH DATABASE legacy');
+			}
+			Zotero.debug('Semantic Search: imported searches and exclusions from ' + lealla);
+		}
+		catch (e) {
+			Zotero.logError(e);
+		}
 	},
 
 	today() {
@@ -96,205 +136,70 @@ var SSStore = {
 		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 	},
 
-	async fileSize() {
-		try {
-			return (await IOUtils.stat(this.path)).size;
-		}
-		catch (e) {
-			return 0;
-		}
+	// ---- passages of the active model (see embedding-store.js) ----
+
+	get embeddings() {
+		return SSModels.active.store;
 	},
 
-	// ---- embeddings ----
-
-	async getIndexedIDs() {
-		let conn = await this.open();
-		let ids = new Set();
-		await conn.execute('SELECT DISTINCT id FROM embeddings', null, (row) => {
-			ids.add(row.getResultByIndex(0));
-		});
-		return ids;
+	fileSize() {
+		return this.embeddings.fileSize();
 	},
 
-	/** Documents indexed by the original app (2500-char sections) */
-	async getLegacyDocumentIDs() {
-		let conn = await this.open();
-		let ids = [];
-		await conn.execute('SELECT DISTINCT id FROM embeddings WHERE scheme IS NULL', null, (row) => {
-			ids.push(row.getResultByIndex(0));
-		});
-		return ids;
+	hasIdIndex() {
+		return this.embeddings.hasIdIndex();
 	},
 
-	async getAllRowids() {
-		let conn = await this.open();
-		let out = [];
-		// Uses the covering index on id when present (much cheaper than a table scan)
-		await conn.execute('SELECT rowid FROM embeddings', null, (row) => {
-			out.push(row.getResultByIndex(0));
-		});
-		return out;
+	ensureIdIndex() {
+		return this.embeddings.ensureIdIndex();
 	},
 
-	/**
-	 * Stream embeddings. onRow(rowid, id, fileName, section, vectorArray, scheme)
-	 * @param {number[]} [rowids] - restrict to these rowids
-	 */
-	async forEachEmbedding(onRow, rowids) {
-		let conn = await this.open();
-		let sql = 'SELECT rowid, id, file_name, section_number, embedding, scheme FROM embeddings';
-		let handler = (row) => {
-			let vec;
-			try {
-				vec = JSON.parse(row.getResultByIndex(4));
-			}
-			catch (e) {
-				return;
-			}
-			if (Array.isArray(vec[0])) vec = vec[0];
-			onRow(row.getResultByIndex(0), row.getResultByIndex(1), row.getResultByIndex(2),
-				row.getResultByIndex(3), vec, row.getResultByIndex(5));
-		};
-		if (!rowids) {
-			await conn.execute(sql, null, handler);
-			return;
-		}
-		for (let i = 0; i < rowids.length; i += 500) {
-			let part = rowids.slice(i, i + 500);
-			await conn.execute(`${sql} WHERE rowid IN (${part.map(() => '?').join(',')})`, part, handler);
-		}
+	getIndexedIDs() {
+		return this.embeddings.getIndexedIDs();
 	},
 
-	/** @returns {Map<number, Float64Array>} exact vectors for rowids */
-	async getVectors(rowids) {
-		let out = new Map();
-		await this.forEachEmbedding((rowid, id, fn, sec, vec) => {
-			out.set(rowid, Float64Array.from(vec));
-		}, rowids);
-		return out;
+	getLegacyDocumentIDs() {
+		return this.embeddings.getLegacyDocumentIDs();
 	},
 
-	/** @returns {Map<number, {id, fileName, section, scheme, text, page, charStart}>} */
-	async getChunkInfo(rowids) {
-		let conn = await this.open();
-		let out = new Map();
-		for (let i = 0; i < rowids.length; i += 500) {
-			let part = rowids.slice(i, i + 500);
-			await conn.execute(
-				`SELECT rowid, id, file_name, section_number, scheme, chunk_text, page, char_start
-				FROM embeddings WHERE rowid IN (${part.map(() => '?').join(',')})`,
-				part,
-				(row) => {
-					out.set(row.getResultByIndex(0), {
-						id: row.getResultByIndex(1),
-						fileName: row.getResultByIndex(2),
-						section: row.getResultByIndex(3),
-						scheme: row.getResultByIndex(4),
-						text: row.getResultByIndex(5),
-						page: row.getResultByIndex(6),
-						charStart: row.getResultByIndex(7),
-					});
-				}
-			);
-		}
-		return out;
+	getAllRowids() {
+		return this.embeddings.getAllRowids();
 	},
 
-	/** @param {Array<[string, number]>} pairs - [id, section_number] */
-	async findRowids(pairs) {
-		let conn = await this.open();
-		let out = new Map();
-		let ids = [...new Set(pairs.map(p => p[0]))];
-		for (let i = 0; i < ids.length; i += 500) {
-			let part = ids.slice(i, i + 500);
-			await conn.execute(
-				`SELECT rowid, id, section_number, scheme FROM embeddings WHERE id IN (${part.map(() => '?').join(',')})`,
-				part,
-				(row) => {
-					out.set(row.getResultByIndex(1) + '\u0000' + row.getResultByIndex(2), {
-						rowid: row.getResultByIndex(0),
-						scheme: row.getResultByIndex(3),
-					});
-				}
-			);
-		}
-		return out;
+	forEachEmbedding(onRow, rowids) {
+		return this.embeddings.forEachEmbedding(onRow, rowids);
 	},
 
-	async countSections(id) {
-		let conn = await this.open();
-		let rows = await conn.execute('SELECT count(*) FROM embeddings WHERE id = ?', [id]);
-		return rows[0].getResultByIndex(0);
+	getVectors(rowids) {
+		return this.embeddings.getVectors(rowids);
 	},
 
-	async getDocumentInfo(id) {
-		let conn = await this.open();
-		let rows = await conn.execute(
-			`SELECT count(*) AS n, min(date) AS date, max(scheme) AS scheme, max(file_name) AS file_name
-			FROM embeddings WHERE id = ?`, [id]);
-		let r = rows[0];
-		let n = r.getResultByName('n');
-		if (!n) return null;
-		return {
-			sections: n,
-			date: r.getResultByName('date'),
-			scheme: r.getResultByName('scheme') || 1,
-			fileName: r.getResultByName('file_name'),
-		};
+	getChunkInfo(rowids) {
+		return this.embeddings.getChunkInfo(rowids);
 	},
 
-	async getDocumentChunks(id) {
-		let conn = await this.open();
-		let rows = await conn.execute(
-			`SELECT rowid, section_number, chunk_text, page, char_start, scheme
-			FROM embeddings WHERE id = ? ORDER BY section_number`, [id]);
-		return rows.map(r => ({
-			rowid: r.getResultByIndex(0),
-			section: r.getResultByIndex(1),
-			text: r.getResultByIndex(2),
-			page: r.getResultByIndex(3),
-			charStart: r.getResultByIndex(4),
-			scheme: r.getResultByIndex(5),
-		}));
+	findRowids(pairs) {
+		return this.embeddings.findRowids(pairs);
 	},
 
-	/**
-	 * Insert the passages of one document in a single transaction.
-	 * @returns {Promise<number[]>} rowids, in chunk order
-	 */
-	async insertDocument(id, fileName, chunks, vectors, scheme) {
-		let conn = await this.open();
-		let date = this.today();
-		let rowids = [];
-		await conn.executeTransaction(async () => {
-			await conn.execute('DELETE FROM embeddings WHERE id = ?', [id]);
-			for (let i = 0; i < chunks.length; i++) {
-				let c = chunks[i];
-				let vec = Array.from(vectors.subarray(i * 256, (i + 1) * 256), x => Math.fround(x));
-				await conn.executeCached(
-					`INSERT INTO embeddings (id, date, file_name, section_number, embedding, scheme, chunk_text, page, char_start)
-					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					[id, date, fileName, i, JSON.stringify(vec), scheme, c.text, c.page, c.charStart]
-				);
-				let r = await conn.executeCached('SELECT last_insert_rowid()');
-				rowids.push(r[0].getResultByIndex(0));
-			}
-		});
-		return rowids;
+	countSections(id) {
+		return this.embeddings.countSections(id);
 	},
 
-	/** Remember where a legacy section was found in the PDF (see SSPassages.locateLegacy) */
-	async setLegacyLocation(rowid, text, page, charStart) {
-		let conn = await this.open();
-		await conn.execute(
-			'UPDATE embeddings SET chunk_text = ?, page = ?, char_start = ? WHERE rowid = ? AND scheme IS NULL',
-			[text, page, charStart, rowid]
-		);
+	getDocumentInfo(id) {
+		return this.embeddings.getDocumentInfo(id);
 	},
 
-	async deleteDocument(id) {
-		let conn = await this.open();
-		await conn.execute('DELETE FROM embeddings WHERE id = ?', [id]);
+	getDocumentChunks(id) {
+		return this.embeddings.getDocumentChunks(id);
+	},
+
+	setLegacyLocation(rowid, text, page, charStart) {
+		return this.embeddings.setLegacyLocation(rowid, text, page, charStart);
+	},
+
+	deleteDocument(id) {
+		return this.embeddings.deleteDocument(id);
 	},
 
 	// ---- excluded ----
@@ -319,14 +224,14 @@ var SSStore = {
 		return rows.length ? { reason: rows[0].getResultByIndex(0), date: rows[0].getResultByIndex(1) } : null;
 	},
 
-	/** Exclude a document; like the original app, its embeddings are removed */
+	/** Exclude a document; like the original app, its passages are removed (from every model) */
 	async addExcluded(id, reason) {
 		let conn = await this.open();
 		await conn.executeTransaction(async () => {
 			await conn.execute('DELETE FROM excluded WHERE id = ?', [id]);
 			await conn.execute('INSERT INTO excluded (id, reason, date) VALUES (?, ?, ?)', [id, reason, this.today()]);
-			await conn.execute('DELETE FROM embeddings WHERE id = ?', [id]);
 		});
+		await SSModels.deleteDocumentEverywhere(id);
 	},
 
 	async removeExcluded(id) {
@@ -338,7 +243,7 @@ var SSStore = {
 
 	async listHistory() {
 		let conn = await this.open();
-		let rows = await conn.execute('SELECT id, query, date, results FROM history ORDER BY date DESC, rowid DESC');
+		let rows = await conn.execute('SELECT id, query, date, results, model FROM history ORDER BY date DESC, rowid DESC');
 		let seen = new Set();
 		let out = [];
 		for (let r of rows) {
@@ -350,7 +255,7 @@ var SSStore = {
 				count = JSON.parse(r.getResultByIndex(3)).length;
 			}
 			catch (e) {}
-			out.push({ id, query: r.getResultByIndex(1), date: r.getResultByIndex(2), count });
+			out.push({ id, query: r.getResultByIndex(1), date: r.getResultByIndex(2), count, model: r.getResultByIndex(4) || 'lealla' });
 		}
 		return out;
 	},
@@ -358,7 +263,7 @@ var SSStore = {
 	async getHistory(id) {
 		let conn = await this.open();
 		let rows = await conn.execute(
-			'SELECT id, query, date, results, query_embedding FROM history WHERE id = ? ORDER BY rowid DESC LIMIT 1', [id]);
+			'SELECT id, query, date, results, model FROM history WHERE id = ? ORDER BY rowid DESC LIMIT 1', [id]);
 		if (!rows.length) return null;
 		let r = rows[0];
 		let results = [];
@@ -371,17 +276,18 @@ var SSStore = {
 			query: r.getResultByIndex(1),
 			date: r.getResultByIndex(2),
 			results,
+			model: r.getResultByIndex(4) || 'lealla',
 		};
 	},
 
-	async saveHistory(id, query, queryEmbedding, results) {
+	async saveHistory(id, query, queryEmbedding, results, model) {
 		let conn = await this.open();
 		let qe = JSON.stringify([Array.from(queryEmbedding, x => Math.fround(x))]);
 		await conn.executeTransaction(async () => {
 			await conn.execute('DELETE FROM history WHERE id = ?', [id]);
 			await conn.execute(
-				'INSERT INTO history (id, date, query, query_embedding, results) VALUES (?, ?, ?, ?, ?)',
-				[id, this.today(), query, qe, JSON.stringify(results)]
+				'INSERT INTO history (id, date, query, query_embedding, results, model) VALUES (?, ?, ?, ?, ?, ?)',
+				[id, this.today(), query, qe, JSON.stringify(results), model]
 			);
 		});
 	},

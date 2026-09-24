@@ -1,4 +1,4 @@
-/* global Zotero, Services, SSStore, SSVectorIndex, SSIndexer, SSSearch, SSPassages, SSModelManager, SSOcr */
+/* global Zotero, Services, SSStore, SSVectorIndex, SSIndexer, SSSearch, SSPassages, SSModelManager, SSOcr, SSEvents */
 /* exported SSUI */
 
 /**
@@ -210,6 +210,7 @@ var SSUI = {
 		};
 		this._unsubscribe.push(SSIndexer.onChange(throttled));
 		this._unsubscribe.push(SSOcr.onChange(throttled));
+		this._unsubscribe.push(SSEvents.on('models', throttled));
 		this._unsubscribe.push(SSVectorIndex.onChange(() => {
 			if (SSVectorIndex.loaded) throttled();
 		}));

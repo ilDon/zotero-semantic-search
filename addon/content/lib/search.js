@@ -1,17 +1,18 @@
-/* global Zotero, Cc, Ci, SSStore, SSVectorIndex, SSEmbedder, SSModelManager, SSPassages */
+/* global Zotero, Cc, Ci, SSStore, SSVectorIndex, SSEmbedder, SSModelManager, SSPassages, SSModels */
 /* exported SSSearch */
 
 /**
- * Semantic search over the passage index, with the search history of the
- * original app (history table, id = sha256(query)) used as a result cache.
+ * Semantic search over the active model's passage index, with the search
+ * history (history table, id = sha256(query) as in the original app, plus the
+ * model name for models other than LEALLA) used as a result cache.
  */
 var SSSearch = {
 	// approximate (int8) scores are within ~0.01 of the exact cosine
 	APPROX_MARGIN: 0.02,
 
+	/** Default threshold of the active model (similarity scales differ between models) */
 	get minSimilarity() {
-		let v = parseFloat(Zotero.Prefs.get('extensions.semantic-search.minSimilarity', true));
-		return Number.isFinite(v) ? v : 0.6;
+		return SSModels.active.minSimilarity;
 	},
 
 	get maxResults() {
@@ -33,6 +34,11 @@ var SSSearch = {
 		return hex;
 	},
 
+	/** History id of a query run with a model */
+	historyID(query, model) {
+		return model === 'lealla' ? this.hashQuery(query) : this.hashQuery(model + '\n' + query);
+	},
+
 	async ensureReady() {
 		if (!(await SSModelManager.isReady())) {
 			let e = new Error('The embedding model has not been downloaded yet.');
@@ -50,12 +56,15 @@ var SSSearch = {
 	 * @param {boolean} [opts.useCache=true] - return saved results for an identical query
 	 * @param {boolean} [opts.save=true] - store in the history
 	 * @param {string[]} [opts.keys] - restrict to these attachment keys
-	 * @returns {Promise<{id, query, date, results, fromCache}>}
+	 * @param {string} [opts.carryFrom] - history id of a run with another model:
+	 *   copy its statuses to passages of the same document and page
+	 * @returns {Promise<{id, query, date, results, fromCache, model}>}
 	 */
 	async search(query, opts = {}) {
 		query = String(query || '');
 		if (!query.trim()) throw new Error('Empty query');
-		let id = this.hashQuery(query);
+		let model = SSModels.activeId;
+		let id = this.historyID(query, model);
 		let useCache = opts.useCache !== false && !opts.keys;
 		if (useCache) {
 			let saved = await SSStore.getHistory(id);
@@ -85,10 +94,51 @@ var SSSearch = {
 				if (s !== undefined) r.status = s;
 			}
 		}
-		if (opts.save !== false && !opts.keys) {
-			await SSStore.saveHistory(id, query, this.meanVector(qvecs), results);
+		if (opts.carryFrom && opts.carryFrom !== id) {
+			await this._carryStatuses(opts.carryFrom, results);
 		}
-		return { id, query, date: SSStore.today(), results, fromCache: false };
+		if (opts.save !== false && !opts.keys) {
+			await SSStore.saveHistory(id, query, this.meanVector(qvecs), results, model);
+		}
+		return { id, query, date: SSStore.today(), results, fromCache: false, model };
+	},
+
+	/**
+	 * Passages differ between models: statuses set on a run with another model
+	 * are copied to the new passages of the same document and page.
+	 */
+	async _carryStatuses(fromID, results) {
+		let prev = await SSStore.getHistory(fromID);
+		if (!prev) return;
+		let marked = prev.results.filter(r => r.status !== undefined && r.status !== 0);
+		if (!marked.length) return;
+		let prevStore = SSModels.space(prev.model).store;
+		let pageOf = async (store, list) => {
+			let withRowid = list.filter(r => r.rowid !== undefined);
+			let info = withRowid.length ? await store.getChunkInfo(withRowid.map(r => r.rowid)) : new Map();
+			return r => {
+				let ci = info.get(r.rowid);
+				let page = Number.isInteger(r.page) ? r.page : (ci && Number.isInteger(ci.page) ? ci.page : null);
+				return page === null ? null : r.folder_id + '|' + page;
+			};
+		};
+		let status = new Map();
+		try {
+			let key = await pageOf(prevStore, marked);
+			for (let r of marked) {
+				let k = key(r);
+				// "cited" wins over "irrelevant" when several passages share a page
+				if (k && (!status.has(k) || r.status === 1)) status.set(k, r.status);
+			}
+		}
+		catch (e) {
+			return; // that model's index was deleted
+		}
+		let key = await pageOf(SSModels.active.store, results);
+		for (let r of results) {
+			let s = status.get(key(r));
+			if (s !== undefined) r.status = s;
+		}
 	},
 
 	excerpt(text, n) {
@@ -97,9 +147,10 @@ var SSSearch = {
 	},
 
 	meanVector(vecs) {
-		let m = new Float32Array(256);
+		let dim = vecs[0].length;
+		let m = new Float32Array(dim);
 		for (let v of vecs) {
-			for (let k = 0; k < 256; k++) m[k] += v[k];
+			for (let k = 0; k < dim; k++) m[k] += v[k];
 		}
 		let n = Math.sqrt(m.reduce((a, x) => a + x * x, 0)) || 1;
 		return m.map(x => x / n);
@@ -133,19 +184,20 @@ var SSSearch = {
 		let entries = cands.map(c => SSVectorIndex.entry(c.i));
 		let vectors = await SSStore.getVectors(entries.map(e => e.rowid));
 		let qnorms = qvecs.map(q => Math.sqrt(q.reduce((a, x) => a + x * x, 0)) || 1);
+		let dim = qvecs[0].length;
 		let results = [];
 		for (let e of entries) {
 			let v = vectors.get(e.rowid);
 			if (!v || !e.key) continue;
 			let vn = 0;
-			for (let k = 0; k < 256; k++) vn += v[k] * v[k];
+			for (let k = 0; k < dim; k++) vn += v[k] * v[k];
 			vn = Math.sqrt(vn) || 1;
 			let sim = -2;
 			let segment = 0;
 			for (let j = 0; j < qvecs.length; j++) {
 				let q = qvecs[j];
 				let d = 0;
-				for (let k = 0; k < 256; k++) d += q[k] * v[k];
+				for (let k = 0; k < dim; k++) d += q[k] * v[k];
 				d /= qnorms[j] * vn;
 				if (d > sim) {
 					sim = d;

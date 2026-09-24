@@ -2,6 +2,37 @@
 	<html:link rel="localization" href="semantic-search.ftl"/>
 
 	<groupbox>
+		<label><html:h2 data-l10n-id="semsearch-prefs-model"/></label>
+		<html:p class="ss-desc" data-l10n-id="semsearch-prefs-model-desc"/>
+		<html:div class="ss-row">
+			<html:select id="semsearch-model-select">
+				<html:option value="lealla" data-l10n-id="semsearch-model-option-lealla"/>
+				<html:option value="e5-small" data-l10n-id="semsearch-model-option-e5-small"/>
+				<html:option value="arctic-m-v2" data-l10n-id="semsearch-model-option-arctic-m-v2"/>
+			</html:select>
+		</html:div>
+		<html:p id="semsearch-model-info" class="ss-desc"/>
+		<html:div class="ss-row">
+			<html:span id="semsearch-model-status" class="ss-status"/>
+			<html:button id="semsearch-model-download" data-l10n-id="semsearch-model-download" hidden="true"/>
+		</html:div>
+		<html:div id="semsearch-build" class="ss-build" hidden="true">
+			<html:div id="semsearch-build-status" class="ss-status"/>
+			<html:progress id="semsearch-build-progress" max="1" value="0"/>
+			<html:div class="ss-buttons">
+				<html:button id="semsearch-build-resume" data-l10n-id="semsearch-build-resume" hidden="true"/>
+				<html:button id="semsearch-build-use-now" data-l10n-id="semsearch-build-use-now"/>
+				<html:button id="semsearch-build-cancel" data-l10n-id="semsearch-build-cancel"/>
+			</html:div>
+		</html:div>
+		<html:div id="semsearch-indexes" class="ss-indexes"/>
+		<html:div id="semsearch-migration-notice" class="ss-warning" hidden="true">
+			<html:span id="semsearch-migration-text"/>
+			<html:button id="semsearch-migration-show" data-l10n-id="semsearch-show-file"/>
+		</html:div>
+	</groupbox>
+
+	<groupbox>
 		<label><html:h2 data-l10n-id="semsearch-prefs-search"/></label>
 		<html:div class="ss-grid">
 			<html:label for="semsearch-min-similarity" data-l10n-id="semsearch-prefs-min-similarity"/>
@@ -30,14 +61,6 @@
 		</html:div>
 	</groupbox>
 
-	<groupbox>
-		<label><html:h2 data-l10n-id="semsearch-prefs-model"/></label>
-		<html:p class="ss-desc" data-l10n-id="semsearch-prefs-model-desc"/>
-		<html:div class="ss-row">
-			<html:span id="semsearch-model-status" class="ss-status"/>
-			<html:button id="semsearch-model-download" data-l10n-id="semsearch-model-download" hidden="true"/>
-		</html:div>
-	</groupbox>
 
 	<groupbox>
 		<label><html:h2 data-l10n-id="semsearch-prefs-mcp"/></label>

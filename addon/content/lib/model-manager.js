@@ -1,50 +1,77 @@
-/* global Zotero, IOUtils, PathUtils, ChromeWorker */
-/* exported SSModelManager */
+/* global Zotero, IOUtils, PathUtils, ChromeWorker, SSEvents, SSActiveProxy, SSModels */
+/* exported SSModelFiles, SSModelManager */
 
 /**
- * Locates and downloads the LEALLA-large weights (Hugging Face port, pinned
- * revision). The files are stored in the Zotero *profile* directory (not the
- * data directory, which is often synced), ~600 MB in total.
+ * Locates and downloads the weights of an embedding model. The files are
+ * stored in the Zotero *profile* directory (not the data directory, which is
+ * often synced).
+ *
+ * LEALLA-large: Hugging Face port, pinned revision, ~600 MB, in
+ * semantic-search/model (as in earlier versions). Other models: int8 weight
+ * files published with the plugin's releases, in semantic-search/models/<id>.
  */
-var SSModelManager = {
-	REPO: 'setu4993/LEALLA-large',
-	REVISION: '84f26abc31038fe88ef1927f798019e68a80feb0',
-	FILES: {
-		model: {
-			name: 'model.safetensors',
-			size: 589837568,
-			sha256: 'c21233d9f284d55d4f25815efd41a669358b9d0f954706f6568e852a5b212979',
-		},
-		vocab: {
-			name: 'vocab.txt',
-			size: 5220781,
-			sha256: null,
-		},
-	},
-
-	_download: null, // { promise, progress: {file, received, total}, abort }
-	_listeners: new Set(),
+var SSModelFiles = class {
+	constructor(spec) {
+		this.spec = spec;
+		this._download = null; // { promise, progress: {file, received, total}, abort }
+		this._lastError = null;
+		if (spec.id === 'lealla') {
+			this.REPO = 'setu4993/LEALLA-large';
+			this.REVISION = '84f26abc31038fe88ef1927f798019e68a80feb0';
+			this.FILES = {
+				model: {
+					name: 'model.safetensors',
+					size: 589837568,
+					sha256: 'c21233d9f284d55d4f25815efd41a669358b9d0f954706f6568e852a5b212979',
+				},
+				vocab: {
+					name: 'vocab.txt',
+					size: 5220781,
+					sha256: null,
+				},
+			};
+		}
+		else {
+			this.FILES = spec.files;
+		}
+	}
 
 	get baseDir() {
 		return PathUtils.join(Zotero.Profile.dir, 'semantic-search');
-	},
+	}
 
 	get modelDir() {
-		let custom = Zotero.Prefs.get('extensions.semantic-search.modelDir', true);
-		return custom || PathUtils.join(this.baseDir, 'model');
-	},
+		if (this.spec.id === 'lealla') {
+			let custom = Zotero.Prefs.get('extensions.semantic-search.modelDir', true);
+			return custom || PathUtils.join(this.baseDir, 'model');
+		}
+		return PathUtils.join(this.baseDir, 'models', this.spec.id);
+	}
 
+	path(key) {
+		return PathUtils.join(this.modelDir, this.FILES[key].name);
+	}
+
+	// LEALLA file names, as used by the embedding worker
 	get modelPath() {
-		return PathUtils.join(this.modelDir, this.FILES.model.name);
-	},
+		return this.path(this.spec.id === 'lealla' ? 'model' : 'weights');
+	}
 
 	get vocabPath() {
-		return PathUtils.join(this.modelDir, this.FILES.vocab.name);
-	},
+		return this.path(this.spec.id === 'lealla' ? 'vocab' : 'tokenizer');
+	}
 
 	url(file) {
-		return `https://huggingface.co/${this.REPO}/resolve/${this.REVISION}/${file}`;
-	},
+		if (this.spec.id === 'lealla') {
+			return `https://huggingface.co/${this.REPO}/resolve/${this.REVISION}/${file}`;
+		}
+		return this.spec.baseURL + file;
+	}
+
+	/** Total download size in bytes */
+	get size() {
+		return Object.values(this.FILES).reduce((a, f) => a + f.size, 0);
+	}
 
 	async isReady() {
 		for (let f of Object.values(this.FILES)) {
@@ -58,7 +85,7 @@ var SSModelManager = {
 			}
 		}
 		return true;
-	},
+	}
 
 	async status() {
 		if (this._download) {
@@ -68,23 +95,15 @@ var SSModelManager = {
 			return { state: (await this.isReady()) ? 'ready' : 'error', error: this._lastError };
 		}
 		return { state: (await this.isReady()) ? 'ready' : 'missing' };
-	},
+	}
 
 	onChange(fn) {
-		this._listeners.add(fn);
-		return () => this._listeners.delete(fn);
-	},
+		return SSEvents.on('model', fn);
+	}
 
 	_emit() {
-		for (let fn of this._listeners) {
-			try {
-				fn();
-			}
-			catch (e) {
-				Zotero.logError(e);
-			}
-		}
-	},
+		SSEvents.emit('model');
+	}
 
 	/** Download missing/corrupt files. Resolves when the model is ready. */
 	ensureDownloaded() {
@@ -93,7 +112,9 @@ var SSModelManager = {
 		dl.promise = (async () => {
 			this._lastError = null;
 			await IOUtils.makeDirectory(this.modelDir, { createAncestors: true, ignoreExisting: true });
-			for (let f of [this.FILES.vocab, this.FILES.model]) {
+			// small files first
+			let files = Object.values(this.FILES).sort((a, b) => a.size - b.size);
+			for (let f of files) {
 				let path = PathUtils.join(this.modelDir, f.name);
 				let ok = false;
 				try {
@@ -118,7 +139,7 @@ var SSModelManager = {
 				this._emit();
 			});
 		return dl.promise;
-	},
+	}
 
 	_downloadFile(f, path, dl) {
 		return new Promise((resolve, reject) => {
@@ -152,11 +173,16 @@ var SSModelManager = {
 			};
 			worker.postMessage({ url: this.url(f.name), path, size: f.size, sha256: f.sha256 });
 		});
-	},
+	}
 
 	cancelDownload() {
 		if (this._download && this._download.abort) {
 			this._download.abort();
 		}
-	},
+	}
 };
+
+/** The active model's files */
+var SSModelManager = SSActiveProxy(() => SSModels.active.files, {
+	onChange: fn => SSEvents.on('model', fn),
+});

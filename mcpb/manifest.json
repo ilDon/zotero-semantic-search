@@ -4,7 +4,7 @@
   "display_name": "Zotero Semantic Search",
   "version": "0.0.0",
   "description": "Search your Zotero library by meaning and cite passages with page numbers.",
-  "long_description": "Connects Claude to the Zotero Semantic Search plugin running in Zotero on this computer. Claude can find the passages in your PDFs that are closest in meaning to a query (in any of 109 languages), read them in context, and get full bibliographic data and formatted citations. Everything stays on your computer: this extension only talks to Zotero's local server (127.0.0.1). Requires Zotero 7-10 with the Semantic Search plugin installed and running.",
+  "long_description": "Connects Claude to the Zotero Semantic Search plugin running in Zotero on this computer. Claude can find the passages in your PDFs that are closest in meaning to a query (in about 100 languages), read them in context, and get full bibliographic data and formatted citations. Everything stays on your computer: this extension only talks to Zotero's local server (127.0.0.1). Requires Zotero 7-10 with the Semantic Search plugin installed and running.",
   "author": {
     "name": "Gherardo Carullo",
     "url": "https://github.com/ilDon"

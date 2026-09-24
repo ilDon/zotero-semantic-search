@@ -1,63 +1,69 @@
-/* global Zotero, IOUtils, PathUtils, SSStore */
-/* exported SSVectorIndex */
+/* global Zotero, IOUtils, PathUtils, SSEvents, SSActiveProxy, SSModels */
+/* exported SSVectorIndexImpl, SSVectorIndex */
 
 /**
- * In-memory index of all passage vectors, int8-quantised (256 bytes + 1 scale
- * per passage: ~130 MB for 500k passages instead of ~3 GB of JSON in SQLite).
- * The full scan runs in WebAssembly SIMD; candidates are then re-scored with
- * the exact float vectors from the database, so similarities are exact.
+ * In-memory index of all passage vectors of one embedding model,
+ * int8-quantised (one byte per dimension + 1 scale per passage: ~130 MB for
+ * 500k LEALLA passages instead of ~3 GB of JSON in SQLite). The full scan runs
+ * in WebAssembly SIMD; candidates are then re-scored with the exact vectors
+ * from the database, so similarities are exact.
  *
  * The quantised vectors are cached in the profile directory and reconciled
  * with the database (by rowid) at load time.
  */
-var SSVectorIndex = {
-	DIM: 256,
-	CACHE_VERSION: 1,
+var SSVectorIndexImpl = class {
+	constructor(space) {
+		this.space = space;
+		this.DIM = space.spec.dim;
+		this.CACHE_VERSION = 1;
+		this._lealla = space.spec.runtime === 'lealla';
+		this._inst = null;
+		this._w = null;
+		this._cap = 0;
+		this.n = 0;
+		this.rowids = null; // Int32Array
+		this.docIdx = null; // Int32Array (-1 = deleted)
+		this.sections = null; // Int32Array
+		this.docs = []; // {key, fileName, idx: number[]}
+		this.docByKey = new Map();
+		this.liveCount = 0;
+		this.loaded = false;
+		this._loading = null;
+		this._dirty = false;
+		this._saveTimer = null;
+		this.progress = null; // {phase, done, total}
+	}
 
-	_module: null,
-	_inst: null,
-	_cap: 0,
-	n: 0,
-	rowids: null, // Int32Array
-	docIdx: null, // Int32Array (-1 = deleted)
-	sections: null, // Int32Array
-	docs: [], // {key, fileName, idx: number[]}
-	docByKey: new Map(),
-	liveCount: 0,
-	loaded: false,
-	_loading: null,
-	_dirty: false,
-	_listeners: new Set(),
-	progress: null, // {phase, done, total}
+	get store() {
+		return this.space.store;
+	}
 
 	get cachePath() {
-		return PathUtils.join(Zotero.Profile.dir, 'semantic-search', 'vectors.bin');
-	},
+		// LEALLA keeps the file name of earlier versions
+		let name = this._lealla ? 'vectors.bin' : `vectors-${this.space.id}.bin`;
+		return PathUtils.join(Zotero.Profile.dir, 'semantic-search', name);
+	}
 
 	onChange(fn) {
-		this._listeners.add(fn);
-		return () => this._listeners.delete(fn);
-	},
+		return SSEvents.on('index', fn);
+	}
 
 	_emit() {
-		for (let fn of this._listeners) {
-			try {
-				fn();
-			}
-			catch (e) {
-				Zotero.logError(e);
-			}
-		}
-	},
+		SSEvents.emit('index');
+	}
 
+	/** Scan kernel: lealla.wasm (256 dims) for LEALLA, encoder.wasm (any dimension) otherwise */
 	async _wasmModule() {
-		if (!this._module) {
-			let req = await Zotero.HTTP.request('GET', 'chrome://semantic-search/content/lealla.wasm',
-				{ responseType: 'arraybuffer' });
-			this._module = await WebAssembly.compile(req.response);
+		let url = this._lealla ? 'chrome://semantic-search/content/lealla.wasm' : 'chrome://semantic-search/content/encoder.wasm';
+		let cache = SSVectorIndexImpl._modules || (SSVectorIndexImpl._modules = new Map());
+		if (!cache.has(url)) {
+			cache.set(url, (async () => {
+				let req = await Zotero.HTTP.request('GET', url, { responseType: 'arraybuffer' });
+				return WebAssembly.compile(req.response);
+			})());
 		}
-		return this._module;
-	},
+		return cache.get(url);
+	}
 
 	/** (Re)allocate storage for `cap` vectors, keeping current contents */
 	async _allocate(cap) {
@@ -97,13 +103,13 @@ var SSVectorIndex = {
 		this.rowids = rowids;
 		this.docIdx = docIdx;
 		this.sections = sections;
-	},
+	}
 
 	async _ensureCapacity(extra) {
 		if (this.n + extra <= this._cap) return;
 		let cap = Math.max(Math.ceil((this.n + extra) * 1.25), 1024);
 		await this._allocate(cap);
-	},
+	}
 
 	_reset() {
 		this.n = 0;
@@ -113,7 +119,7 @@ var SSVectorIndex = {
 		this._inst = null;
 		this._w = null;
 		this._cap = 0;
-	},
+	}
 
 	_doc(key, fileName) {
 		let d = this.docByKey.get(key);
@@ -126,7 +132,7 @@ var SSVectorIndex = {
 			this.docs[d].fileName = fileName;
 		}
 		return d;
-	},
+	}
 
 	/** Append one vector (already reserved capacity) */
 	_push(rowid, key, fileName, section, vec) {
@@ -155,14 +161,14 @@ var SSVectorIndex = {
 		this.docIdx[i] = d;
 		this.docs[d].idx.push(i);
 		this.liveCount++;
-	},
+	}
 
 	_tombstone(i) {
 		if (this.docIdx[i] === -1) return;
 		this.docIdx[i] = -1;
 		this._w.scales[i] = 0;
 		this.liveCount--;
-	},
+	}
 
 	// ---------------------------------------------------------------- loading
 
@@ -181,19 +187,19 @@ var SSVectorIndex = {
 				});
 		}
 		return this._loading;
-	},
+	}
 
 	async _load() {
 		this._reset();
 		this.progress = { phase: 'index', done: 0, total: 0 };
 		this._emit();
 		// Needed for cheap rowid scans; one-time cost on legacy databases
-		if (!(await SSStore.hasIdIndex())) {
+		if (!(await this.store.hasIdIndex())) {
 			this.progress = { phase: 'db-index', done: 0, total: 0 };
 			this._emit();
-			await SSStore.ensureIdIndex();
+			await this.store.ensureIdIndex();
 		}
-		let dbRowids = await SSStore.getAllRowids();
+		let dbRowids = await this.store.getAllRowids();
 		let loadedFromCache = false;
 		try {
 			loadedFromCache = await this._readCache();
@@ -229,7 +235,7 @@ var SSVectorIndex = {
 			this._emit();
 			let done = 0;
 			let lastEmit = 0;
-			await SSStore.forEachEmbedding((rowid, id, fileName, section, vec) => {
+			await this.store.forEachEmbedding((rowid, id, fileName, section, vec) => {
 				if (vec.length !== this.DIM) return;
 				if (this.n >= this._cap) return; // DB grew while loading; picked up next time
 				this._push(rowid, id, fileName, section, vec);
@@ -247,7 +253,13 @@ var SSVectorIndex = {
 			await this._allocate(1024);
 		}
 		if (this._dirty) await this.save();
-	},
+	}
+
+	/** Before the per-model files, the LEALLA database was file_embeddings.db */
+	_legacyPath() {
+		if (!this._lealla) return null;
+		return PathUtils.join(PathUtils.parent(this.store.path), SSModels.registry.lealla.legacyDbFile);
+	}
 
 	async _readCache() {
 		let path = this.cachePath;
@@ -259,7 +271,7 @@ var SSVectorIndex = {
 		let n = dv.getUint32(8, true);
 		let headerLen = dv.getUint32(12, true);
 		let header = JSON.parse(new TextDecoder().decode(bytes.subarray(16, 16 + headerLen)));
-		if (header.dbPath !== SSStore.path) return false;
+		if (header.dbPath !== this.store.path && header.dbPath !== this._legacyPath()) return false;
 		let off = 16 + headerLen;
 		off = (off + 3) & ~3;
 		let need = off + n * (4 * 4 + this.DIM);
@@ -293,7 +305,7 @@ var SSVectorIndex = {
 			}
 		}
 		return true;
-	},
+	}
 
 	/** Write the cache (compacting deleted entries) */
 	async save() {
@@ -313,7 +325,7 @@ var SSVectorIndex = {
 			}
 		}
 		let n = live.length;
-		let header = new TextEncoder().encode(JSON.stringify({ dbPath: SSStore.path, docs }));
+		let header = new TextEncoder().encode(JSON.stringify({ dbPath: this.store.path, docs }));
 		let off = 16 + header.length;
 		off = (off + 3) & ~3;
 		let total = off + n * (16 + this.DIM);
@@ -340,9 +352,8 @@ var SSVectorIndex = {
 		await IOUtils.makeDirectory(PathUtils.parent(this.cachePath), { createAncestors: true, ignoreExisting: true });
 		await IOUtils.write(this.cachePath, out, { tmpPath: this.cachePath + '.tmp' });
 		this._dirty = false;
-	},
+	}
 
-	_saveTimer: null,
 	// The cache only speeds up loading (the database is the source of truth), so it
 	// is written at most every few minutes, when indexing ends and at shutdown
 	scheduleSave() {
@@ -357,7 +368,7 @@ var SSVectorIndex = {
 				Zotero.logError(e);
 			}
 		}, 5 * 60 * 1000);
-	},
+	}
 
 	async flush() {
 		if (this._saveTimer) {
@@ -365,12 +376,12 @@ var SSVectorIndex = {
 			this._saveTimer = null;
 		}
 		if (this._dirty && this.loaded) await this.save();
-	},
+	}
 
 	unload() {
 		this._reset();
 		this.loaded = false;
-	},
+	}
 
 	/** Drop the cache file and rebuild from the database */
 	async rebuild() {
@@ -379,7 +390,7 @@ var SSVectorIndex = {
 		await IOUtils.remove(this.cachePath, { ignoreAbsent: true });
 		this._emit();
 		await this.load();
-	},
+	}
 
 	// ---------------------------------------------------------------- updates
 
@@ -394,7 +405,7 @@ var SSVectorIndex = {
 		}
 		this.scheduleSave();
 		this._emit();
-	},
+	}
 
 	removeDocument(key) {
 		if (!this.loaded) return;
@@ -404,12 +415,12 @@ var SSVectorIndex = {
 		this.docs[d].idx = [];
 		this.scheduleSave();
 		this._emit();
-	},
+	}
 
 	hasDocument(key) {
 		let d = this.docByKey.get(key);
 		return d !== undefined && this.docs[d].idx.length > 0;
-	},
+	}
 
 	documentCount() {
 		let n = 0;
@@ -417,7 +428,7 @@ var SSVectorIndex = {
 			if (d.idx.length) n++;
 		}
 		return n;
-	},
+	}
 
 	// ---------------------------------------------------------------- search
 
@@ -434,9 +445,14 @@ var SSVectorIndex = {
 		for (let k = 0; k < this.DIM; k++) maxAbs = Math.max(maxAbs, Math.abs(q[k] / norm));
 		let qScale = maxAbs / 32767 || 1e-9;
 		for (let k = 0; k < this.DIM; k++) this._w.q[k] = Math.round(q[k] / norm / qScale);
-		this._inst.exports.scan_i8(this._w.vecPtr, this._w.scalePtr, this.n, this._w.qPtr, qScale, this._w.outPtr);
+		if (this._lealla) {
+			this._inst.exports.scan_i8(this._w.vecPtr, this._w.scalePtr, this.n, this._w.qPtr, qScale, this._w.outPtr);
+		}
+		else {
+			this._inst.exports.scan_i8(this._w.vecPtr, this._w.scalePtr, this.n, this.DIM, this._w.qPtr, qScale, this._w.outPtr);
+		}
 		return this._w.out.subarray(0, this.n);
-	},
+	}
 
 	/**
 	 * @returns {number[]} indices with approx score >= minScore, best first, at most `limit`
@@ -462,12 +478,12 @@ var SSVectorIndex = {
 		idx.sort((a, b) => scores[b] - scores[a]);
 		if (idx.length > limit) idx.length = limit;
 		return idx.map(i => ({ i, score: scores[i] }));
-	},
+	}
 
 	/** Top-k indices regardless of threshold */
 	topK(query, k, onlyKeys) {
 		return this.candidates(query, -2, k, onlyKeys);
-	},
+	}
 
 	/** Mean (normalised) vector of a document, dequantised */
 	centroid(key) {
@@ -484,7 +500,7 @@ var SSVectorIndex = {
 		norm = Math.sqrt(norm) || 1;
 		for (let k = 0; k < this.DIM; k++) c[k] /= norm;
 		return c;
-	},
+	}
 
 	entry(i) {
 		let d = this.docIdx[i];
@@ -495,5 +511,10 @@ var SSVectorIndex = {
 			section: this.sections[i],
 			sectionCount: d >= 0 ? this.docs[d].idx.length : 0,
 		};
-	},
+	}
 };
+
+/** The active model's index */
+var SSVectorIndex = SSActiveProxy(() => SSModels.active.index, {
+	onChange: fn => SSEvents.on('index', fn),
+});

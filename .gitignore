@@ -5,3 +5,5 @@ build/
 *.xpi
 .DS_Store
 __pycache__/
+.models/
+wasm-encoder/target/

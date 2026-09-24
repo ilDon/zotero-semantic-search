@@ -1,0 +1,17 @@
+[package]
+name = "encoder-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "int8 transformer sentence encoders (multilingual-e5, Arctic-embed v2) + int8 vector scan, compiled to WebAssembly SIMD"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

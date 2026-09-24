@@ -15,7 +15,7 @@ EXCERPT:
 
 var SemanticSearchWindow = {
 	S: null,
-	current: null, // {id, query, date, results, fromCache, similar?}
+	current: null, // {id, query, date, results, fromCache, model, similar?}
 	view: 'results', // results | excluded | similar
 	historyItems: [],
 	_unsubscribe: [],
@@ -75,7 +75,11 @@ var SemanticSearchWindow = {
 		});
 		this.$('status-filter').addEventListener('change', () => this.renderResults());
 		this.$('history-filter').addEventListener('input', () => this.renderHistory());
-		this.$('rerun-button').addEventListener('click', () => this.doSearch({ useCache: false }));
+		this.$('rerun-button').addEventListener('click', () => {
+			// results of another model: run with the active one, keeping the marks
+			let other = this.current && this.current.model && this.current.model !== this.S.models.activeId;
+			this.doSearch({ useCache: false, carryFrom: other ? this.current.id : undefined });
+		});
 		this.$('copy-list-button').addEventListener('click', () => this.copyList());
 		this.$('collection-button').addEventListener('click', () => this.saveAsCollection());
 		this.$('excluded-button').addEventListener('click', () => this.showExcluded());
@@ -127,6 +131,14 @@ var SemanticSearchWindow = {
 		this._unsubscribe.push(this.S.indexer.onChange(refreshStatus));
 		this._unsubscribe.push(this.S.index.onChange(refreshStatus));
 		this._unsubscribe.push(this.S.model.onChange(refreshStatus));
+		// the active model changed (switch finished, or switched back)
+		this._unsubscribe.push(this.S.events.on('models', () => {
+			this.$('threshold').value = this.S.search.minSimilarity.toFixed(2);
+			refreshStatus();
+			this.renderHistory();
+			if (this.view === 'results') this.renderResults();
+			this._warmUp();
+		}));
 		this._unsubscribe.push(this.S.ocr.onChange(() => {
 			if (this.view === 'excluded') this.showExcluded();
 		}));
@@ -205,7 +217,7 @@ var SemanticSearchWindow = {
 				if (model.state === 'error') {
 					parts.push(this.el('div', { class: 'status-line', l10n: ['semsearch-model-error', { error: model.error }] }));
 				}
-				parts.push(this.el('div', { class: 'status-line', l10n: ['semsearch-model-missing'] }));
+				parts.push(this.el('div', { class: 'status-line', l10n: this._modelMissingL10n() }));
 				parts.push(this.el('div', { class: 'status-buttons' },
 					this.el('button', { l10n: ['semsearch-model-download'], onclick: () => this.downloadModel() })));
 			}
@@ -240,13 +252,17 @@ var SemanticSearchWindow = {
 			}));
 		}
 
+		await this._buildStatus(parts);
 		let ix = this.S.indexer.status();
 		let buttons = this.el('div', { class: 'status-buttons' });
 		if (ix.state === 'indexing' || ix.state === 'paused' || ix.state === 'scanning') {
 			let done = ix.stats.done + ix.stats.failed + ix.stats.excluded;
 			let total = Math.max(ix.stats.total, done + ix.queued + ix.current.length);
-			parts.push(this.el('div', { class: 'status-line', l10n: ['semsearch-index-running', { done, total }] }));
-			parts.push(this.el('progress', { max: total || 1, value: done }));
+			// during a model switch the build progress above says it all
+			if (!ix.build) {
+				parts.push(this.el('div', { class: 'status-line', l10n: ['semsearch-index-running', { done, total }] }));
+				parts.push(this.el('progress', { max: total || 1, value: done }));
+			}
 			for (let c of ix.current) {
 				parts.push(this.el('div', {
 					class: 'status-line status-current',
@@ -309,12 +325,48 @@ var SemanticSearchWindow = {
 		}
 		notice.dataset.kind = 'model';
 		notice.className = '';
-		let children = [this.el('span', { l10n: ['semsearch-model-missing'] })];
+		let children = [this.el('span', { l10n: this._modelMissingL10n() })];
 		if (model.state !== 'downloading') {
 			children.push(this.el('button', { class: 'primary', l10n: ['semsearch-model-download'], onclick: () => this.downloadModel() }));
 		}
 		notice.replaceChildren(...children);
 		notice.hidden = false;
+	},
+
+	_modelMissingL10n() {
+		let spec = this.S.models.active.spec;
+		return ['semsearch-model-missing', { model: spec.label, size: String(spec.downloadMB) }];
+	},
+
+	_modelLabel(id) {
+		let spec = this.S.models.registry.get(id || 'lealla');
+		return spec ? spec.label : id;
+	},
+
+	/** Progress of a model switch (download, then indexing) */
+	async _buildStatus(parts) {
+		let building = this.S.models.building;
+		if (!building) return;
+		let args = { model: building.spec.label, current: this.S.models.active.spec.label };
+		let dl = await building.files.status();
+		if (dl.state === 'downloading') {
+			let p = dl.progress || {};
+			let pct = p.total ? Math.floor(100 * p.received / p.total) : 0;
+			parts.push(this.el('div', { class: 'status-line', l10n: ['semsearch-build-downloading', { ...args, percent: pct }] }));
+			parts.push(this.el('progress', { max: 100, value: pct }));
+			return;
+		}
+		let build = this.S.indexer.status().build;
+		if (build && build.model === building.id) {
+			parts.push(this.el('div', {
+				class: 'status-line',
+				l10n: ['semsearch-build-status', { ...args, done: build.done.toLocaleString(), total: build.total.toLocaleString() }],
+			}));
+			parts.push(this.el('progress', { max: build.total || 1, value: build.done }));
+		}
+		else {
+			parts.push(this.el('div', { class: 'status-line', l10n: ['semsearch-build-waiting', args] }));
+		}
 	},
 
 	async downloadModel() {
@@ -362,7 +414,10 @@ var SemanticSearchWindow = {
 				onclick: () => this.openHistory(h.id),
 			},
 			this.el('div', { class: 'history-query', text: h.query }),
-			this.el('div', { class: 'history-meta', text: `${this._formatDate(h.date)} · ${h.count}` }),
+			this.el('div', { class: 'history-meta', text: `${this._formatDate(h.date)} · ${h.count}` },
+				h.model !== this.S.models.activeId
+					? this.el('span', { class: 'history-model', text: this._modelLabel(h.model), l10n: ['semsearch-history-model', { model: this._modelLabel(h.model) }] })
+					: null),
 			this.el('button', {
 				class: 'history-delete',
 				text: '×',
@@ -400,7 +455,7 @@ var SemanticSearchWindow = {
 
 	// ------------------------------------------------------------ searching
 
-	async doSearch({ useCache = true } = {}) {
+	async doSearch({ useCache = true, carryFrom } = {}) {
 		let query = this.$('query').value.trim();
 		if (!query) return;
 		let minSimilarity = parseFloat(this.$('threshold').value);
@@ -409,7 +464,7 @@ var SemanticSearchWindow = {
 		this.view = 'results';
 		this._setBusy(true);
 		try {
-			let res = await this.S.search.search(query, { useCache, minSimilarity });
+			let res = await this.S.search.search(query, { useCache, minSimilarity, carryFrom });
 			if (seq !== this._searchSeq) return;
 			await this.showResults(res);
 			if (!res.fromCache) await this.loadHistoryList();
@@ -435,9 +490,14 @@ var SemanticSearchWindow = {
 		this.current = res;
 		this.typeFilter = new Set();
 		// metadata first (fast); passage texts are loaded lazily as cards scroll into view
-		await this.S.passages.enrich(res.results, { text: false });
+		await this.S.passages.enrich(res.results, { text: false, model: res.model });
 		this.renderHistory();
 		this.renderResults();
+	},
+
+	/** Model of the results on screen (saved searches may come from another model) */
+	_resultsModel() {
+		return (this.current && this.current.model) || this.S.models.activeId;
 	},
 
 	showError(e) {
@@ -482,8 +542,18 @@ var SemanticSearchWindow = {
 		if (this.current.fromCache) {
 			summary.push(' · ', this.el('span', { l10n: ['semsearch-results-from-history', { date: this._formatDate(this.current.date) }] }));
 		}
+		let otherModel = this.current.model && this.current.model !== this.S.models.activeId;
+		if (otherModel) {
+			summary.push(' · ', this.el('span', { class: 'other-model', l10n: ['semsearch-results-other-model', { model: this._modelLabel(this.current.model) }] }));
+		}
 		this.$('results-summary').replaceChildren(...summary);
 		this.$('rerun-button').hidden = !this.current.fromCache;
+		if (otherModel) {
+			document.l10n.setAttributes(this.$('rerun-button'), 'semsearch-rerun-with', { model: this.S.models.active.spec.label });
+		}
+		else {
+			document.l10n.setAttributes(this.$('rerun-button'), 'semsearch-rerun');
+		}
 		this._renderTypeFilter();
 		this._renderDateFilter();
 		header.hidden = false;
@@ -662,7 +732,7 @@ var SemanticSearchWindow = {
 			passage.classList.add('loading');
 			passage.textContent = '…';
 			card._ssLoadText = async () => {
-				await this.S.passages.enrich([r], { text: true });
+				await this.S.passages.enrich([r], { text: true, model: this._resultsModel() });
 				this._fillCard(r, card, passage, approx, actions);
 			};
 			this._observer.observe(card);
@@ -768,6 +838,7 @@ var SemanticSearchWindow = {
 		};
 		if (r.status !== undefined) o.status = r.status;
 		if (r.rowid !== undefined) o.rowid = r.rowid;
+		if (Number.isInteger(r.page)) o.page = r.page;
 		if (r.duplicates) o.duplicates = r.duplicates;
 		if (r.matched) o.matched = r.matched;
 		return o;
@@ -776,14 +847,16 @@ var SemanticSearchWindow = {
 	async locate(r) {
 		let item = await this.S.passages.getItemByKey(r.folder_id);
 		if (!item || !r.rowid) return;
-		let vec = (await this.S.store.getVectors([r.rowid])).get(r.rowid);
-		let count = r.sectionCount || await this.S.store.countSections(r.folder_id);
+		// legacy sections only exist in the LEALLA-large database
+		let store = this.S.models.space('lealla').store;
+		let vec = (await store.getVectors([r.rowid])).get(r.rowid);
+		let count = r.sectionCount || await store.countSections(r.folder_id);
 		let res = await this.S.passages.locateLegacy(item, r.section_number, count, vec);
 		if (res) {
 			r.text = res.text;
 			r.page = res.page;
 			r.approximate = false;
-			await this.S.store.setLegacyLocation(r.rowid, res.text, res.page, res.charStart);
+			await store.setLegacyLocation(r.rowid, res.text, res.page, res.charStart);
 		}
 	},
 
@@ -830,7 +903,7 @@ var SemanticSearchWindow = {
 	},
 
 	async copyPrompt(r, button) {
-		if (r.text === undefined) await this.S.passages.enrich([r], { text: true });
+		if (r.text === undefined) await this.S.passages.enrich([r], { text: true, model: this._resultsModel() });
 		let query = this.current ? this.current.query : '';
 		this._copy(PROMPT.replace('[QUERY]', query).replace('[TEXT]', r.text || ''), button);
 	},

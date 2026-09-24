@@ -6,7 +6,7 @@
   "repository": "https://github.com/ilDon/zotero-semantic-search.git",
   "license": "MIT",
   "scripts": {
-    "build:wasm": "cd wasm && cargo build --release && cp target/wasm32-unknown-unknown/release/lealla_wasm.wasm ../addon/content/lealla.wasm",
+    "build:wasm": "node scripts/build.mjs --wasm",
     "build": "node scripts/build.mjs",
     "test": "node --test test/*.test.js"
   }
