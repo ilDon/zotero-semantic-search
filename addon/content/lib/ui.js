@@ -1,4 +1,4 @@
-/* global Zotero, Services, SSStore, SSVectorIndex, SSIndexer, SSSearch, SSPassages, SSModelManager, SSOcr, SSEvents */
+/* global Zotero, Services, SSStore, SSVectorIndex, SSIndexer, SSSearch, SSModels, SSOcr, SSEvents */
 /* exported SSUI */
 
 /**
@@ -210,7 +210,10 @@ var SSUI = {
 		};
 		this._unsubscribe.push(SSIndexer.onChange(throttled));
 		this._unsubscribe.push(SSOcr.onChange(throttled));
-		this._unsubscribe.push(SSEvents.on('models', throttled));
+		this._unsubscribe.push(SSEvents.on('models', () => {
+			this._similarCache.clear();
+			throttled();
+		}));
 		this._unsubscribe.push(SSVectorIndex.onChange(() => {
 			if (SSVectorIndex.loaded) throttled();
 		}));
@@ -275,7 +278,9 @@ var SSUI = {
 					let list = doc.createElement('ul');
 					list.className = 'ss-similar';
 					frag.appendChild(list);
-					SSSearch.similarDocuments(indexed.key, 5).then((docs) => {
+					// computed before the content is replaced, and cached: the pane is
+					// re-rendered on every indexing update and must not flicker
+					await this._similar(indexed.key).then((docs) => {
 						if (!docs.length) {
 							let li = doc.createElement('li');
 							doc.l10n.setAttributes(li, 'semsearch-pane-similar-none');
@@ -295,10 +300,27 @@ var SSUI = {
 						}
 					}).catch(e => Zotero.debug('Semantic Search: similar documents failed: ' + e));
 				}
+				// translate before swapping, so the pane never shows empty strings
+				try {
+					await doc.l10n.translateFragment(frag);
+				}
+				catch (e) {}
 				content.replaceChildren(frag);
 				if (summary) setSectionSummary(summary);
 			},
 		});
+	},
+
+	_similarCache: new Map(), // attachment key -> {time, docs}
+	SIMILAR_TTL_MS: 5 * 60 * 1000,
+
+	async _similar(key) {
+		let hit = this._similarCache.get(key);
+		if (hit && Date.now() - hit.time < this.SIMILAR_TTL_MS) return hit.docs;
+		let docs = await SSSearch.similarDocuments(key, 5);
+		this._similarCache.set(key, { time: Date.now(), docs });
+		if (this._similarCache.size > 200) this._similarCache.delete(this._similarCache.keys().next().value);
+		return docs;
 	},
 
 	async _attachmentRow(doc, att, showName) {
@@ -315,8 +337,11 @@ var SSUI = {
 		el.appendChild(status);
 		let buttons = [];
 		let summary = '';
+		// only indexing into the active model counts here (not a model being built)
+		let active = SSModels.activeId;
 		let current = SSIndexer.current.get(att.key);
-		let queued = SSIndexer.queue.some(q => q.key === att.key);
+		if (current && current.model !== active) current = null;
+		let queued = SSIndexer.queue.some(q => q.key === att.key && (!q.targets || q.targets.includes(active)));
 		let exclusion = await SSStore.getExclusion(att.key);
 		let info = exclusion ? null : await SSStore.getDocumentInfo(att.key);
 		if (current) {
