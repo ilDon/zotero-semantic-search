@@ -439,6 +439,8 @@ var SemanticSearchWindow = {
 	renderHistory() {
 		// "New search" is pointless on the empty search page itself
 		this.$('new-search-button').disabled = this.view === 'results' && !this.current;
+		// the management views (excluded documents, duplicates) have nothing to search
+		this.$('query-form').hidden = this.view === 'excluded' || this.view === 'duplicates';
 		let filter = this.$('history-filter').value.trim().toLowerCase();
 		let list = this.$('history-list');
 		let items = this.historyItems.filter(h => !filter || h.query.toLowerCase().includes(filter));

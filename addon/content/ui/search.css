@@ -247,6 +247,10 @@ progress {
 	min-height: 0;
 }
 
+#query-form[hidden] {
+	display: none;
+}
+
 #query-form {
 	padding: 14px 18px 10px;
 	display: flex;
