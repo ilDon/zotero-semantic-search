@@ -356,8 +356,17 @@ var SSMcpEndpoint = {
 			let sql = `FROM itemAttachments IA JOIN items I USING (itemID)
 				WHERE IA.contentType = 'application/pdf' AND IA.parentItemID IS NULL
 				AND IA.itemID NOT IN (SELECT itemID FROM deletedItems)`;
-			let total = await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) ${sql}`);
-			let ids = await Zotero.DB.columnQueryAsync(`SELECT itemID ${sql} ORDER BY I.dateAdded DESC LIMIT ? OFFSET ?`, [limit, offset]);
+			let params = [];
+			// same date filter as semantic_search: applied in the query, so paging covers matching PDFs only
+			if (args.added_after !== undefined) {
+				let since = SSPassages.sinceToUTC(args.added_after);
+				if (!since) throw new Error('added_after must be a valid date in the form YYYY-MM-DD');
+				sql += ' AND I.dateAdded >= ?';
+				params.push(since);
+			}
+			let total = await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) ${sql}`, params);
+			let ids = await Zotero.DB.columnQueryAsync(`SELECT itemID ${sql} ORDER BY I.dateAdded DESC LIMIT ? OFFSET ?`,
+				[...params, limit, offset]);
 			let items = await Zotero.Items.getAsync(ids);
 			return {
 				total,

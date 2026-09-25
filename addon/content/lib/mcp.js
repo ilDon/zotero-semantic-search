@@ -129,6 +129,10 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 				properties: {
 					limit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
 					offset: { type: 'integer', minimum: 0, default: 0 },
+					added_after: {
+						type: 'string',
+						description: 'Only PDFs added to the Zotero library on or after this date (YYYY-MM-DD). Each result reports its date_added.',
+					},
 				},
 			},
 			annotations: { readOnlyHint: true, openWorldHint: false },
@@ -230,6 +234,9 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 			case 'list_saved_searches':
 				return toolResult(await service.listSearches(args));
 			case 'list_attachments_without_parent':
+				if (args.added_after !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(args.added_after))) {
+					return toolError('added_after must be a date in the form YYYY-MM-DD');
+				}
 				return toolResult(await service.listOrphanAttachments(args));
 			case 'create_parent_item':
 				if (!args.attachment_key || !args.item_type || typeof args.title !== 'string' || !args.title.trim()) {

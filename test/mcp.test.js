@@ -102,3 +102,10 @@ test('create_parent_item validates its arguments before calling the service', as
 	const tool = TOOLS.find(t => t.name === 'create_parent_item');
 	assert.strictEqual(tool.annotations.readOnlyHint, false);
 });
+
+test('list_attachments_without_parent validates added_after', async () => {
+	let r = await handle(rpc('tools/call', { name: 'list_attachments_without_parent', arguments: { added_after: '2024/01/31' } }), service);
+	assert.strictEqual(r.result.isError, true);
+	const tool = TOOLS.find(t => t.name === 'list_attachments_without_parent');
+	assert.ok(tool.inputSchema.properties.added_after);
+});
