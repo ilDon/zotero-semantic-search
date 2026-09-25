@@ -77,6 +77,7 @@ var SemanticSearchWindow = {
 		this.$('model-indicator').addEventListener('click', () => this.openModelSettings());
 		this._renderModelIndicator();
 		this.$('history-filter').addEventListener('input', () => this.renderHistory());
+		this.$('new-search-button').addEventListener('click', () => this.newSearch());
 		this.$('rerun-button').addEventListener('click', () => {
 			// results of another model: run with the active one, keeping the marks
 			let other = this.current && this.current.model && this.current.model !== this.S.models.activeId;
@@ -436,6 +437,8 @@ var SemanticSearchWindow = {
 	},
 
 	renderHistory() {
+		// "New search" is pointless on the empty search page itself
+		this.$('new-search-button').disabled = this.view === 'results' && !this.current;
 		let filter = this.$('history-filter').value.trim().toLowerCase();
 		let list = this.$('history-list');
 		let items = this.historyItems.filter(h => !filter || h.query.toLowerCase().includes(filter));
@@ -519,6 +522,22 @@ var SemanticSearchWindow = {
 			this.$('results-header').hidden = true;
 			this.$('results').replaceChildren(this.el('div', { class: 'placeholder', l10n: ['semsearch-searching'] }));
 		}
+	},
+
+	/** Back to the page the window opens with: empty query, no results */
+	newSearch() {
+		this._searchSeq++; // a search still running must not show up
+		this.view = 'results';
+		this.current = null;
+		this.typeFilter = new Set();
+		this.setAddedSince(null);
+		this.$('query').value = '';
+		let notice = this.$('notice');
+		if (notice.dataset.kind === 'error') notice.hidden = true;
+		this._setBusy(false);
+		this.renderHistory();
+		this.renderResults();
+		this.$('query').focus();
 	},
 
 	async showResults(res) {

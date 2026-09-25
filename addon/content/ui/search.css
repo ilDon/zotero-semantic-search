@@ -52,6 +52,12 @@ window {
 	padding-bottom: 0;
 }
 
+#sidebar .new-search {
+	width: 100%;
+	margin: 0 0 14px !important;
+	padding: 5px 8px;
+}
+
 #sidebar h2 {
 	margin: 0 0 8px;
 	font-size: 11px;
