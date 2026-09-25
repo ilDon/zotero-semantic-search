@@ -77,6 +77,102 @@ var SSMcpEndpoint = {
 		};
 	},
 
+	_checkWritesAllowed() {
+		if (!Zotero.Prefs.get('extensions.semantic-search.mcp.allowWrites', true)) {
+			throw new Error('Changes to the library by AI assistants are disabled in the Semantic Search settings.');
+		}
+	},
+
+	/**
+	 * An unsaved regular item from the client's metadata: {item_type, title,
+	 * creators, fields, tags}. Base fields (e.g. "publisher") are mapped to the
+	 * type's own field (e.g. "university"); invalid fields are reported.
+	 */
+	_buildItem(args, libraryID) {
+		let typeID = Zotero.ItemTypes.getID(String(args.item_type));
+		if (!typeID || ['attachment', 'note', 'annotation'].includes(args.item_type)) {
+			throw new Error(`Unknown item type "${args.item_type}"`);
+		}
+		let item = new Zotero.Item(typeID);
+		item.libraryID = libraryID;
+		let set = [];
+		let ignored = [];
+		let setField = (name, value) => {
+			value = String(value).trim();
+			if (!value) return;
+			let fieldID = Zotero.ItemFields.getID(name);
+			if (fieldID && !Zotero.ItemFields.isValidForType(fieldID, typeID)) {
+				fieldID = Zotero.ItemFields.getFieldIDFromTypeAndBase(typeID, fieldID) || null;
+			}
+			if (!fieldID || !Zotero.ItemFields.isValidForType(fieldID, typeID)) {
+				ignored.push(name);
+				return;
+			}
+			item.setField(fieldID, value);
+			set.push(Zotero.ItemFields.getName(fieldID));
+		};
+		setField('title', args.title);
+		for (let [name, value] of Object.entries(args.fields || {})) {
+			if (name === 'title') continue;
+			setField(name, value);
+		}
+		let creators = [];
+		let primary = Zotero.CreatorTypes.getName(Zotero.CreatorTypes.getPrimaryIDForType(typeID));
+		for (let c of args.creators || []) {
+			if (!c || typeof c !== 'object') continue;
+			let type = c.creator_type || primary;
+			let ctID = Zotero.CreatorTypes.getID(type);
+			if (!ctID || !Zotero.CreatorTypes.isValidForItemType(ctID, typeID)) type = primary;
+			if (c.name) creators.push({ name: String(c.name), creatorType: type, fieldMode: 1 });
+			else if (c.last_name || c.first_name) {
+				creators.push({ firstName: String(c.first_name || ''), lastName: String(c.last_name || ''), creatorType: type });
+			}
+		}
+		if (creators.length) item.setCreators(creators);
+		for (let t of args.tags || []) {
+			if (String(t).trim()) item.addTag(String(t).trim());
+		}
+		return { item, set, ignored, creators };
+	},
+
+	/** A collection by key or by (unique) name */
+	_resolveCollection(libraryID, ref) {
+		let byKey = Zotero.Collections.getByLibraryAndKey(libraryID, ref);
+		if (byKey && !byKey.deleted) return byKey;
+		let matches = Zotero.Collections.getByLibrary(libraryID, true)
+			.filter(c => !c.deleted && c.name.toLowerCase() === ref.toLowerCase());
+		if (matches.length === 1) return matches[0];
+		if (!matches.length) throw new Error(`No collection "${ref}"`);
+		throw new Error(`Several collections are named "${ref}": use one of their keys (${matches.map(c => c.key).join(', ')})`);
+	},
+
+	/** Items of the library with the same DOI or ISBN */
+	async _findByIdentifier(libraryID, item) {
+		let clean = v => String(v || '').toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, '').replace(/[^0-9a-z./]/g, '');
+		let checks = [];
+		for (let field of ['DOI', 'ISBN']) {
+			let fieldID = Zotero.ItemFields.getID(field);
+			if (!Zotero.ItemFields.isValidForType(fieldID, item.itemTypeID)) continue;
+			let value = item.getField(field);
+			if (!value) continue;
+			let values = field === 'ISBN' ? value.split(/[\s,;]+/).map(clean).filter(v => v.length >= 10) : [clean(value)];
+			if (values.length) checks.push([fieldID, values]);
+		}
+		let found = new Map();
+		for (let [fieldID, values] of checks) {
+			let rows = await Zotero.DB.queryAsync(
+				`SELECT I.itemID, V.value FROM items I JOIN itemData D USING (itemID) JOIN itemDataValues V USING (valueID)
+				WHERE I.libraryID = ? AND D.fieldID = ? AND I.itemID NOT IN (SELECT itemID FROM deletedItems)`,
+				[libraryID, fieldID]
+			);
+			for (let r of rows) {
+				let existing = String(r.value).split(/[\s,;]+/).map(clean);
+				if (values.some(v => existing.includes(v))) found.set(r.itemID, true);
+			}
+		}
+		return Zotero.Items.getAsync([...found.keys()]);
+	},
+
 	async _resolveAttachment(key) {
 		let item = await SSPassages.getItemByKey(key);
 		if (!item) return null;
@@ -382,58 +478,13 @@ var SSMcpEndpoint = {
 
 		/** "Create Parent Item" for a standalone PDF, with the metadata given by the client */
 		async createParentItem(args) {
-			if (!Zotero.Prefs.get('extensions.semantic-search.mcp.allowWrites', true)) {
-				throw new Error('Changes to the library by AI assistants are disabled in the Semantic Search settings.');
-			}
+			SSMcpEndpoint._checkWritesAllowed();
 			let att = await SSPassages.getItemByKey(String(args.attachment_key));
 			if (!att || !att.isAttachment()) throw new Error('No attachment with key ' + args.attachment_key);
 			if (att.parentItem) {
 				throw new Error(`Attachment ${att.key} already has a parent item (${att.parentItem.key}): see get_item`);
 			}
-			let typeID = Zotero.ItemTypes.getID(String(args.item_type));
-			if (!typeID || ['attachment', 'note', 'annotation'].includes(args.item_type)) {
-				throw new Error(`Unknown item type "${args.item_type}"`);
-			}
-			let parent = new Zotero.Item(typeID);
-			parent.libraryID = att.libraryID;
-			let set = [];
-			let ignored = [];
-			let setField = (name, value) => {
-				value = String(value).trim();
-				if (!value) return;
-				let fieldID = Zotero.ItemFields.getID(name);
-				// base fields (e.g. "publisher") map to the type's own field (e.g. "university")
-				if (fieldID && !Zotero.ItemFields.isValidForType(fieldID, typeID)) {
-					fieldID = Zotero.ItemFields.getFieldIDFromTypeAndBase(typeID, fieldID) || null;
-				}
-				if (!fieldID || !Zotero.ItemFields.isValidForType(fieldID, typeID)) {
-					ignored.push(name);
-					return;
-				}
-				parent.setField(fieldID, value);
-				set.push(Zotero.ItemFields.getName(fieldID));
-			};
-			setField('title', args.title);
-			for (let [name, value] of Object.entries(args.fields || {})) {
-				if (name === 'title') continue;
-				setField(name, value);
-			}
-			let creators = [];
-			let primary = Zotero.CreatorTypes.getName(Zotero.CreatorTypes.getPrimaryIDForType(typeID));
-			for (let c of args.creators || []) {
-				if (!c || typeof c !== 'object') continue;
-				let type = c.creator_type || primary;
-				let ctID = Zotero.CreatorTypes.getID(type);
-				if (!ctID || !Zotero.CreatorTypes.isValidForItemType(ctID, typeID)) type = primary;
-				if (c.name) creators.push({ name: String(c.name), creatorType: type, fieldMode: 1 });
-				else if (c.last_name || c.first_name) {
-					creators.push({ firstName: String(c.first_name || ''), lastName: String(c.last_name || ''), creatorType: type });
-				}
-			}
-			if (creators.length) parent.setCreators(creators);
-			for (let t of args.tags || []) {
-				if (String(t).trim()) parent.addTag(String(t).trim());
-			}
+			let { item: parent, set, ignored, creators } = SSMcpEndpoint._buildItem(args, att.libraryID);
 			// Child items cannot be in collections: the parent takes the attachment's place
 			let collections = att.getCollections();
 			await Zotero.DB.executeTransaction(async () => {
@@ -451,6 +502,45 @@ var SSMcpEndpoint = {
 				...(ignored.length ? { fields_ignored: ignored, note: 'These fields are not valid for this item type.' } : {}),
 				creators: creators.length,
 				zotero_select: `zotero://select/library/items/${parent.key}`,
+			};
+		},
+
+		/** A new bibliographic item without attachments */
+		async createItem(args) {
+			SSMcpEndpoint._checkWritesAllowed();
+			let libraryID = Zotero.Libraries.userLibraryID;
+			let collections = [];
+			for (let ref of args.collections || []) {
+				collections.push(SSMcpEndpoint._resolveCollection(libraryID, String(ref)).id);
+			}
+			let { item, set, ignored, creators } = SSMcpEndpoint._buildItem(args, libraryID);
+			if (!args.allow_duplicate) {
+				let existing = await SSMcpEndpoint._findByIdentifier(libraryID, item);
+				if (existing.length) {
+					return {
+						created: false,
+						note: 'An item with the same DOI or ISBN is already in the library: nothing was created. '
+							+ 'Pass allow_duplicate: true to create it anyway.',
+						existing: existing.map(e => ({
+							item_key: e.key,
+							title: e.getDisplayTitle(),
+							item_type: Zotero.ItemTypes.getName(e.itemTypeID),
+							zotero_select: `zotero://select/library/items/${e.key}`,
+						})),
+					};
+				}
+			}
+			item.setCollections(collections);
+			await item.saveTx();
+			return {
+				created: true,
+				item_key: item.key,
+				item_type: args.item_type,
+				fields_set: set,
+				...(ignored.length ? { fields_ignored: ignored, note: 'These fields are not valid for this item type.' } : {}),
+				creators: creators.length,
+				collections: collections.length,
+				zotero_select: `zotero://select/library/items/${item.key}`,
 			};
 		},
 	},
