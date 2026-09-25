@@ -221,7 +221,7 @@ var SemanticSearchWindow = {
 				parts.push(this.el('div', { class: 'status-buttons' },
 					this.el('button', { l10n: ['semsearch-model-download'], onclick: () => this.downloadModel() })));
 			}
-			panel.replaceChildren(...parts);
+			await this._swapPanel(panel, parts);
 			this._updateNotice(model);
 			return;
 		}
@@ -302,8 +302,24 @@ var SemanticSearchWindow = {
 			parts.push(this.el('div', { class: 'status-line', title: ix.lastError, l10n: ['semsearch-error', { message: ix.lastError.slice(0, 120) }] }));
 		}
 		parts.push(buttons);
-		panel.replaceChildren(...parts);
+		await this._swapPanel(panel, parts);
 		this._updateExcludedButton();
+	},
+
+	/**
+	 * Replace the status panel content only if it changed, with its strings
+	 * already translated: it is re-rendered on every indexing update, and
+	 * swapping in untranslated (empty) lines made the panel jump.
+	 */
+	async _swapPanel(panel, parts) {
+		let signature = parts.map(p => p.outerHTML).join('');
+		if (signature === panel._ssSignature) return;
+		try {
+			await document.l10n.translateElements(parts.flatMap(p => [p, ...p.querySelectorAll('[data-l10n-id]')]));
+		}
+		catch (e) {}
+		panel._ssSignature = signature;
+		panel.replaceChildren(...parts);
 	},
 
 	async _updateExcludedButton() {
