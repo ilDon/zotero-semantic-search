@@ -159,8 +159,8 @@ var SSDuplicates = {
 	 * Groups of identical PDFs (at least two live copies, not ignored), largest first.
 	 * @returns {Promise<{hash, items: Zotero.Item[]}[]>}
 	 */
-	async groups() {
-		if (this._groups) return this._groups;
+	async groups({ reload = false } = {}) {
+		if (this._groups && !reload) return this._groups;
 		let conn = await this._conn();
 		let hashes = (await conn.execute(
 			`SELECT hash FROM file_hashes WHERE hash NOT IN (SELECT hash FROM duplicate_ignored)
@@ -185,10 +185,40 @@ var SSDuplicates = {
 		this._emit();
 	},
 
+	/**
+	 * Update the cached groups in place after items were trashed or deleted
+	 * (cheap: no database access), so views can update without a full reload.
+	 */
+	refresh() {
+		if (this._groups) {
+			let live = i => !i.deleted && !(i.parentItem && i.parentItem.deleted);
+			this._groups = this._groups
+				.map(g => ({ hash: g.hash, items: g.items.filter(live) }))
+				.filter(g => g.items.length > 1);
+		}
+		this._emit();
+	},
+
+	/** Reload one group (a new copy was found) */
+	async _reloadGroup(hash) {
+		if (!this._groups) return this._emit();
+		let items = await this._itemsWithHash(hash);
+		let i = this._groups.findIndex(g => g.hash === hash);
+		if (items.length > 1) {
+			if (i === -1) this._groups.push({ hash, items });
+			else this._groups[i] = { hash, items };
+		}
+		else if (i !== -1) {
+			this._groups.splice(i, 1);
+		}
+		this._emit();
+	},
+
 	async ignore(hash) {
 		let conn = await this._conn();
 		await conn.execute('INSERT OR REPLACE INTO duplicate_ignored (hash, date) VALUES (?, ?)', [hash, SSStore.today()]);
-		this.invalidate();
+		if (this._groups) this._groups = this._groups.filter(g => g.hash !== hash);
+		this._emit();
 	},
 
 	/** Does the item have bibliographic metadata (a regular parent item with more than a title)? */
@@ -293,7 +323,7 @@ var SSDuplicates = {
 				await other.save();
 			});
 		}
-		this.invalidate();
+		this.refresh();
 		return target;
 	},
 
@@ -345,7 +375,7 @@ var SSDuplicates = {
 				}
 			});
 		}
-		this.invalidate();
+		this.refresh();
 	},
 
 	// ------------------------------------------------------------ new PDFs
@@ -359,10 +389,19 @@ var SSDuplicates = {
 					for (let id of ids) this._scheduleCheck(id);
 				}
 				else if (event === 'delete' || event === 'trash') {
-					this.invalidate();
+					this._scheduleRefresh();
 				}
 			},
 		}, ['item'], 'semanticSearchDuplicates');
+	},
+
+	/** Trash notifications come in bursts (one per item): refresh once */
+	_scheduleRefresh() {
+		if (this._refreshTimer) return;
+		this._refreshTimer = setTimeout(() => {
+			this._refreshTimer = null;
+			this.refresh();
+		}, 300);
 	},
 
 	unregisterNotifier() {
@@ -374,6 +413,7 @@ var SSDuplicates = {
 		for (let t of this._pending.values()) clearTimeout(t);
 		this._pending.clear();
 		if (this._alertTimer) clearTimeout(this._alertTimer);
+		if (this._refreshTimer) clearTimeout(this._refreshTimer);
 	},
 
 	_scheduleCheck(id) {
@@ -396,8 +436,8 @@ var SSDuplicates = {
 		let conn = await this._conn();
 		if ((await conn.execute('SELECT 1 FROM duplicate_ignored WHERE hash = ?', [hash])).length) return;
 		let others = (await this._itemsWithHash(hash)).filter(i => i.id !== item.id);
-		this.invalidate();
 		if (!others.length) return;
+		await this._reloadGroup(hash);
 		this._alertQueue.push({ item, others, hash });
 		if (this._alertTimer) clearTimeout(this._alertTimer);
 		this._scheduleAlert();
