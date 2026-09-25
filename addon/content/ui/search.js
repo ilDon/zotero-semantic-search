@@ -74,6 +74,8 @@ var SemanticSearchWindow = {
 			this.renderResults();
 		});
 		this.$('status-filter').addEventListener('change', () => this.renderResults());
+		this.$('model-indicator').addEventListener('click', () => this.openModelSettings());
+		this._renderModelIndicator();
 		this.$('history-filter').addEventListener('input', () => this.renderHistory());
 		this.$('rerun-button').addEventListener('click', () => {
 			// results of another model: run with the active one, keeping the marks
@@ -133,6 +135,7 @@ var SemanticSearchWindow = {
 		this._unsubscribe.push(this.S.model.onChange(refreshStatus));
 		// the active model changed (switch finished, or switched back)
 		this._unsubscribe.push(this.S.events.on('models', () => {
+			this._renderModelIndicator();
 			this.$('threshold').value = this.S.search.minSimilarity.toFixed(2);
 			refreshStatus();
 			this.renderHistory();
@@ -347,6 +350,23 @@ var SemanticSearchWindow = {
 		}
 		notice.replaceChildren(...children);
 		notice.hidden = false;
+	},
+
+	/** Model in use (and model being switched to), next to the search button */
+	_renderModelIndicator() {
+		let models = this.S.models;
+		let chip = this.$('model-indicator');
+		let args = { model: models.active.spec.label };
+		if (models.building) {
+			document.l10n.setAttributes(chip, 'semsearch-model-indicator-switching', { ...args, next: models.building.spec.label });
+		}
+		else {
+			document.l10n.setAttributes(chip, 'semsearch-model-indicator', args);
+		}
+	},
+
+	openModelSettings() {
+		Zotero.Utilities.Internal.openPreferences(this.S.ui._prefPaneID);
 	},
 
 	_modelMissingL10n() {

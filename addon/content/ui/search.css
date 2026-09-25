@@ -112,6 +112,23 @@ window {
 	font-variant-numeric: tabular-nums;
 }
 
+.model-chip {
+	appearance: none;
+	margin-inline-start: auto;
+	padding: 2px 9px;
+	border: 1px solid rgba(127, 127, 127, 0.4);
+	border-radius: 11px;
+	background: transparent;
+	color: var(--ss-muted);
+	font-size: 11.5px;
+	cursor: pointer;
+}
+
+.model-chip:hover {
+	color: inherit;
+	border-color: currentColor;
+}
+
 .history-model {
 	margin-inline-start: 6px;
 	padding: 0 5px;
@@ -283,7 +300,7 @@ progress {
 }
 
 .hint {
-	margin-inline-start: auto;
+	margin-inline-start: -4px;
 	color: var(--ss-muted);
 	font-size: 11px;
 }

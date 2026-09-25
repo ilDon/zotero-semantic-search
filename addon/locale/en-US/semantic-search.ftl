@@ -189,3 +189,7 @@ semsearch-history-model =
     .title = Results of { $model }
 semsearch-results-other-model = found with { $model }
 semsearch-rerun-with = Search again with { $model }
+semsearch-model-indicator = Model: { $model }
+    .title = Embedding model used for searching. Click to change it in the settings.
+semsearch-model-indicator-switching = Model: { $model } → { $next }
+    .title = Switching to { $next }: searches use { $model } until its index is ready. Click to open the settings.
