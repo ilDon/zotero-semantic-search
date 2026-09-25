@@ -25,7 +25,8 @@ var SSUI = {
 			pluginID: plugin.id,
 			src: plugin.rootURI + 'content/ui/preferences.xhtml',
 			scripts: [plugin.rootURI + 'content/ui/preferences.js'],
-			stylesheets: [plugin.rootURI + 'content/ui/preferences.css'],
+			// versioned URL: stylesheets stay cached across plugin updates otherwise
+			stylesheets: [plugin.rootURI + 'content/ui/preferences.css?v=' + encodeURIComponent(plugin.version)],
 			label: Zotero.locale.startsWith('it') ? 'Ricerca semantica' : 'Semantic Search',
 			image: this.ICON,
 		}).then((id) => {

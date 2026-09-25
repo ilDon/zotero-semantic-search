@@ -13,6 +13,19 @@ EXCERPT:
 [TEXT]
 `;
 
+/*
+ * The stylesheet is loaded with the plugin version in its URL: Zotero keeps
+ * chrome stylesheets cached across plugin updates, so a fixed URL would keep
+ * serving the previous version's CSS until Zotero is restarted.
+ */
+(function loadStylesheet() {
+	let S = Zotero.SemanticSearch;
+	let version = (S && S.plugin && S.plugin.version) || String(Date.now());
+	let pi = document.createProcessingInstruction('xml-stylesheet',
+		`href="chrome://semantic-search/content/ui/search.css?v=${encodeURIComponent(version)}" type="text/css"`);
+	document.insertBefore(pi, document.documentElement);
+})();
+
 var SemanticSearchWindow = {
 	S: null,
 	current: null, // {id, query, date, results, fromCache, model, similar?}
