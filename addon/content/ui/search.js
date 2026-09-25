@@ -159,8 +159,8 @@ var SemanticSearchWindow = {
 		}));
 		let refreshDuplicates = this._throttle(() => {
 			this._updateDuplicatesButton();
-			if (this.view === 'duplicates' && !this._dupBusy) this.showDuplicates();
-		}, 1500);
+			if (this.view === 'duplicates' && !this._dupBusy) this._syncDuplicates();
+		}, 1000);
 		this._unsubscribe.push(this.S.duplicates.onChange(refreshDuplicates));
 		this._unsubscribe.push(this.S.ocr.onChange(() => {
 			if (this.view === 'excluded') this.showExcluded();
@@ -1137,21 +1137,52 @@ var SemanticSearchWindow = {
 		this.$('results-header').hidden = true;
 		let container = this.$('results');
 		let D = this.S.duplicates;
-		if (!container.querySelector('.dup-group')) {
-			container.replaceChildren(this.el('div', { class: 'placeholder', l10n: ['semsearch-searching'] }));
-		}
-		let groups = await D.groups();
+		container.replaceChildren(this.el('div', { class: 'placeholder', l10n: ['semsearch-searching'] }));
+		// opening the view reloads the groups (items may have changed meanwhile)
+		let groups = await D.groups({ reload: true });
 		if (this.view !== 'duplicates') return;
-		let rows = [
+		container.replaceChildren(
 			this.el('h3', { class: 'view-title', l10n: ['semsearch-dup-title'] }),
 			this.el('p', { class: 'view-desc', l10n: ['semsearch-dup-desc'] }),
-		];
-		if (D.state === 'scanning' && D.progress) {
-			rows.push(this.el('p', { class: 'view-desc', l10n: ['semsearch-dup-scanning', { done: D.progress.done, total: D.progress.total }] }));
+			this.el('p', { class: 'view-desc dup-progress', hidden: true }),
+			this.el('div', { class: 'placeholder dup-empty', l10n: ['semsearch-dup-empty'], hidden: true }),
+			...groups.map(g => this._dupGroup(g)));
+		this._syncDuplicates();
+	},
+
+	_dupSignature(group) {
+		return group.items.map(i => i.id).join(',');
+	},
+
+	/**
+	 * Bring the view in line with the current groups, touching only the cards
+	 * that changed (removing a group does not redraw the others or move the
+	 * scroll position).
+	 */
+	async _syncDuplicates() {
+		let D = this.S.duplicates;
+		let groups = await D.groups();
+		if (this.view !== 'duplicates') return;
+		let container = this.$('results');
+		let cards = new Map([...container.querySelectorAll('.dup-group')].map(c => [c.dataset.hash, c]));
+		let wanted = new Set(groups.map(g => g.hash));
+		for (let [hash, card] of cards) {
+			if (!wanted.has(hash)) card.remove();
 		}
-		if (!groups.length) rows.push(this.el('div', { class: 'placeholder', l10n: ['semsearch-dup-empty'] }));
-		for (let g of groups) rows.push(this._dupGroup(g));
-		container.replaceChildren(...rows);
+		for (let g of groups) {
+			let card = cards.get(g.hash);
+			if (!card) container.append(this._dupGroup(g));
+			else if (card.dataset.sig !== this._dupSignature(g)) card.replaceWith(this._dupGroup(g));
+		}
+		let progress = container.querySelector('.dup-progress');
+		if (progress) {
+			progress.hidden = !(D.state === 'scanning' && D.progress);
+			if (!progress.hidden) {
+				document.l10n.setAttributes(progress, 'semsearch-dup-scanning', { done: D.progress.done, total: D.progress.total });
+			}
+		}
+		let empty = container.querySelector('.dup-empty');
+		if (empty) empty.hidden = groups.length > 0;
 		this._updateDuplicatesButton();
 	},
 
@@ -1159,14 +1190,14 @@ var SemanticSearchWindow = {
 		let D = this.S.duplicates;
 		let infos = group.items.map(a => D.describe(a));
 		let boxes = [];
-		let card = this.el('section', { class: 'dup-group' });
+		let card = this.el('section', { class: 'dup-group', 'data-hash': group.hash, 'data-sig': this._dupSignature(group) });
 		let trashButton;
 		let update = () => {
 			let n = boxes.filter(b => b.checked).length;
 			trashButton.disabled = n === 0 || n === boxes.length;
 		};
 		let rows = infos.map((info) => {
-			let box = this.el('input', { type: 'checkbox', onchange: update });
+			let box = this.el('input', { type: 'checkbox', onchange: () => update() });
 			box._ssItem = info.attachment;
 			boxes.push(box);
 			let badge = info.hasMetadata
@@ -1205,8 +1236,9 @@ var SemanticSearchWindow = {
 			}
 			finally {
 				this._dupBusy = false;
+				card.classList.remove('busy');
 			}
-			await this.showDuplicates();
+			await this._syncDuplicates();
 		};
 		let mergeButton = this.el('button', {
 			class: 'primary',
