@@ -86,6 +86,7 @@ var SemanticSearchWindow = {
 		this.$('copy-list-button').addEventListener('click', () => this.copyList());
 		this.$('collection-button').addEventListener('click', () => this.saveAsCollection());
 		this.$('excluded-button').addEventListener('click', () => this.showExcluded());
+		this.$('duplicates-button').addEventListener('click', () => this.showDuplicates());
 		this.$('type-filter-button').addEventListener('click', (e) => {
 			e.stopPropagation();
 			let popup = this.$('type-filter-popup');
@@ -143,6 +144,11 @@ var SemanticSearchWindow = {
 			if (this.view === 'results') this.renderResults();
 			this._warmUp();
 		}));
+		let refreshDuplicates = this._throttle(() => {
+			this._updateDuplicatesButton();
+			if (this.view === 'duplicates' && !this._dupBusy) this.showDuplicates();
+		}, 1500);
+		this._unsubscribe.push(this.S.duplicates.onChange(refreshDuplicates));
 		this._unsubscribe.push(this.S.ocr.onChange(() => {
 			if (this.view === 'excluded') this.showExcluded();
 		}));
@@ -196,6 +202,9 @@ var SemanticSearchWindow = {
 		}
 		else if (args.historyID) {
 			this.openHistory(args.historyID);
+		}
+		else if (args.duplicates) {
+			this.showDuplicates();
 		}
 	},
 
@@ -308,6 +317,7 @@ var SemanticSearchWindow = {
 		parts.push(buttons);
 		await this._swapPanel(panel, parts);
 		this._updateExcludedButton();
+		this._updateDuplicatesButton();
 	},
 
 	/**
@@ -324,6 +334,18 @@ var SemanticSearchWindow = {
 		catch (e) {}
 		panel._ssSignature = signature;
 		panel.replaceChildren(...parts);
+	},
+
+	async _updateDuplicatesButton() {
+		try {
+			let n = await this.S.duplicates.count();
+			let button = this.$('duplicates-button');
+			button.hidden = !n;
+			document.l10n.setAttributes(button, 'semsearch-duplicates', { count: n });
+		}
+		catch (e) {
+			Zotero.logError(e);
+		}
 	},
 
 	async _updateExcludedButton() {
@@ -1091,6 +1113,128 @@ var SemanticSearchWindow = {
 			rows.push(row);
 		}
 		container.replaceChildren(...rows);
+	},
+
+	// ------------------------------------------------------------ duplicates
+
+	/** Groups of identical PDFs, to merge or clean up */
+	async showDuplicates() {
+		this.view = 'duplicates';
+		this.renderHistory();
+		this.$('results-header').hidden = true;
+		let container = this.$('results');
+		let D = this.S.duplicates;
+		if (!container.querySelector('.dup-group')) {
+			container.replaceChildren(this.el('div', { class: 'placeholder', l10n: ['semsearch-searching'] }));
+		}
+		let groups = await D.groups();
+		if (this.view !== 'duplicates') return;
+		let rows = [
+			this.el('h3', { class: 'view-title', l10n: ['semsearch-dup-title'] }),
+			this.el('p', { class: 'view-desc', l10n: ['semsearch-dup-desc'] }),
+		];
+		if (D.state === 'scanning' && D.progress) {
+			rows.push(this.el('p', { class: 'view-desc', l10n: ['semsearch-dup-scanning', { done: D.progress.done, total: D.progress.total }] }));
+		}
+		if (!groups.length) rows.push(this.el('div', { class: 'placeholder', l10n: ['semsearch-dup-empty'] }));
+		for (let g of groups) rows.push(this._dupGroup(g));
+		container.replaceChildren(...rows);
+		this._updateDuplicatesButton();
+	},
+
+	_dupGroup(group) {
+		let D = this.S.duplicates;
+		let infos = group.items.map(a => D.describe(a));
+		let boxes = [];
+		let card = this.el('section', { class: 'dup-group' });
+		let trashButton;
+		let update = () => {
+			let n = boxes.filter(b => b.checked).length;
+			trashButton.disabled = n === 0 || n === boxes.length;
+		};
+		let rows = infos.map((info) => {
+			let box = this.el('input', { type: 'checkbox', onchange: update });
+			box._ssItem = info.attachment;
+			boxes.push(box);
+			let badge = info.hasMetadata
+				? this.el('span', { class: 'dup-badge ok', l10n: ['semsearch-dup-has-metadata', { count: info.fieldCount }] })
+				: this.el('span', { class: 'dup-badge', l10n: [info.parent ? 'semsearch-dup-no-metadata' : 'semsearch-dup-no-parent'] });
+			let sub = [info.creators, info.year, info.itemType ? this._typeName(info.itemType) : null].filter(Boolean).join(' · ');
+			let extras = [];
+			if (info.notes) extras.push(this.el('span', { l10n: ['semsearch-dup-notes', { count: info.notes }] }));
+			if (info.annotations) extras.push(this.el('span', { l10n: ['semsearch-dup-annotations', { count: info.annotations }] }));
+			if (info.collections) extras.push(this.el('span', { l10n: ['semsearch-dup-collections', { count: info.collections }] }));
+			let added = this.el('span', { l10n: ['semsearch-dup-added', { date: this._formatDate((info.dateAdded || '').slice(0, 10)) }] });
+			return this.el('label', { class: 'dup-row' },
+				box,
+				this.el('div', { class: 'meta' },
+					this.el('div', { class: 'dup-title' },
+						this.el('a', {
+							class: 'title',
+							text: info.title || info.attachment.attachmentFilename,
+							onclick: (e) => {
+								e.preventDefault();
+								this.showInLibrary({ itemID: (info.parent || info.attachment).id });
+							},
+						}),
+						badge),
+					this.el('div', { class: 'sub' }, sub || info.attachment.attachmentFilename || ''),
+					this.el('div', { class: 'sub dup-extras' }, added, ...extras)));
+		});
+		let run = async (fn) => {
+			this._dupBusy = true;
+			card.classList.add('busy');
+			try {
+				await fn();
+			}
+			catch (e) {
+				this.showError(e);
+			}
+			finally {
+				this._dupBusy = false;
+			}
+			await this.showDuplicates();
+		};
+		let mergeButton = this.el('button', {
+			class: 'primary',
+			l10n: ['semsearch-dup-merge'],
+			onclick: () => run(async () => {
+				let keep = this._mergeKeeper(infos);
+				let msg = await document.l10n.formatValue('semsearch-dup-merge-confirm', { count: infos.length, title: keep });
+				if (!Services.prompt.confirm(window, 'Semantic Search', msg)) return;
+				await D.merge(group.items);
+			}),
+		});
+		trashButton = this.el('button', {
+			l10n: ['semsearch-dup-trash'],
+			disabled: true,
+			onclick: () => run(async () => {
+				let chosen = boxes.filter(b => b.checked).map(b => b._ssItem);
+				let msg = await document.l10n.formatValue('semsearch-dup-trash-confirm', { count: chosen.length });
+				if (!Services.prompt.confirm(window, 'Semantic Search', msg)) return;
+				await D.trash(chosen);
+			}),
+		});
+		let ignoreButton = this.el('button', {
+			class: 'link-button',
+			l10n: ['semsearch-dup-ignore'],
+			onclick: () => run(() => D.ignore(group.hash)),
+		});
+		let file = group.items[0].attachmentFilename || '';
+		card.append(
+			this.el('div', { class: 'dup-head' },
+				this.el('span', { class: 'dup-file', text: file }),
+				this.el('span', { class: 'dup-count', l10n: ['semsearch-dup-copies', { count: infos.length }] })),
+			...rows,
+			this.el('div', { class: 'actions' }, mergeButton, trashButton, ignoreButton));
+		return card;
+	},
+
+	/** Title of the item a merge keeps (see SSDuplicates.merge) */
+	_mergeKeeper(infos) {
+		let withParent = infos.filter(i => i.parent).sort((a, b) => (a.dateModified < b.dateModified ? 1 : -1));
+		if (withParent.length) return withParent[0].title;
+		return infos.slice().sort((a, b) => (a.dateAdded < b.dateAdded ? -1 : 1))[0].title;
 	},
 
 	/** OCR button for documents excluded because their PDF has no text */

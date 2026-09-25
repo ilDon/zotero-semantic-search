@@ -198,3 +198,51 @@ semsearch-toolbar-button =
     .tooltiptext = Ricerca semantica ({ $shortcut })
     .label = Ricerca semantica
 semsearch-prefs-mcp-writes = Consenti agli assistenti AI di aggiungere metadati alla libreria (creare elementi genitore per i PDF che non ne hanno)
+semsearch-duplicates = { $count ->
+    [one] { $count } PDF duplicato
+   *[other] { $count } PDF duplicati
+}
+semsearch-dup-title = PDF duplicati
+semsearch-dup-desc = Questi file sono identici, byte per byte. Uniscili in un solo elemento (metadati, note, tag, collezioni e annotazioni vengono riuniti; sui campi in conflitto vince l’elemento modificato più di recente), oppure spunta le copie da spostare nel cestino.
+semsearch-dup-scanning = Ricerca di file identici nella libreria… { $done } di { $total }
+semsearch-dup-empty = Nessun PDF duplicato.
+semsearch-dup-copies = { $count } copie identiche
+semsearch-dup-has-metadata = con metadati ({ $count } campi)
+semsearch-dup-no-metadata = elemento genitore senza metadati
+semsearch-dup-no-parent = nessun elemento genitore
+semsearch-dup-notes = { $count ->
+    [one] 1 nota
+   *[other] { $count } note
+}
+semsearch-dup-annotations = { $count ->
+    [one] 1 annotazione
+   *[other] { $count } annotazioni
+}
+semsearch-dup-collections = { $count ->
+    [one] in 1 collezione
+   *[other] in { $count } collezioni
+}
+semsearch-dup-added = aggiunto il { $date }
+semsearch-dup-merge = Unisci tutti
+semsearch-dup-merge-confirm = Unire questi { $count } elementi in «{ $title }»? Gli altri vengono spostati nel cestino.
+semsearch-dup-trash = Sposta nel cestino i selezionati
+semsearch-dup-trash-confirm = Spostare nel cestino { $count ->
+    [one] la copia selezionata
+   *[other] le { $count } copie selezionate
+}? Gli elementi genitore che restano senza allegati né note vengono spostati anch’essi.
+semsearch-dup-ignore = Tienili tutti (non sono duplicati)
+semsearch-dup-new-title = PDF duplicato
+semsearch-dup-new-one = Il PDF appena aggiunto, «{ $title }», è identico a { $count ->
+    [one] un file già presente nella libreria: «{ $other }».
+   *[other] { $count } file già presenti nella libreria, ad es. «{ $other }».
+}
+semsearch-dup-new-many = { $count } PDF appena aggiunti sono identici a file già presenti nella libreria:
+semsearch-dup-new-delete = { $count ->
+    [one] Elimina il nuovo file
+   *[other] Elimina i nuovi file
+}
+semsearch-dup-new-keep = { $count ->
+    [one] Tienilo comunque
+   *[other] Tienili comunque
+}
+semsearch-dup-new-review = Rivedi…

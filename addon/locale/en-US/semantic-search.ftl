@@ -198,3 +198,51 @@ semsearch-toolbar-button =
     .tooltiptext = Semantic Search ({ $shortcut })
     .label = Semantic Search
 semsearch-prefs-mcp-writes = Allow AI assistants to add metadata to the library (create parent items for PDFs that have none)
+semsearch-duplicates = { $count ->
+    [one] { $count } duplicate PDF
+   *[other] { $count } duplicate PDFs
+}
+semsearch-dup-title = Duplicate PDFs
+semsearch-dup-desc = These files are identical, byte for byte. Merge them into one item (metadata, notes, tags, collections and annotations are combined; on conflicting fields the most recently modified item wins), or tick the copies to move to the trash.
+semsearch-dup-scanning = Checking the library for identical files… { $done } of { $total }
+semsearch-dup-empty = No duplicate PDFs found.
+semsearch-dup-copies = { $count } identical copies
+semsearch-dup-has-metadata = with metadata ({ $count } fields)
+semsearch-dup-no-metadata = parent item without metadata
+semsearch-dup-no-parent = no parent item
+semsearch-dup-notes = { $count ->
+    [one] 1 note
+   *[other] { $count } notes
+}
+semsearch-dup-annotations = { $count ->
+    [one] 1 annotation
+   *[other] { $count } annotations
+}
+semsearch-dup-collections = { $count ->
+    [one] in 1 collection
+   *[other] in { $count } collections
+}
+semsearch-dup-added = added { $date }
+semsearch-dup-merge = Merge all
+semsearch-dup-merge-confirm = Merge these { $count } items into “{ $title }”? The others are moved to the trash.
+semsearch-dup-trash = Move selected to trash
+semsearch-dup-trash-confirm = Move { $count } selected { $count ->
+    [one] copy
+   *[other] copies
+} to the trash? Parent items left without attachments or notes are moved too.
+semsearch-dup-ignore = Keep all (not duplicates)
+semsearch-dup-new-title = Duplicate PDF
+semsearch-dup-new-one = The PDF you just added, “{ $title }”, is identical to { $count ->
+    [one] a file already in your library: “{ $other }”.
+   *[other] { $count } files already in your library, e.g. “{ $other }”.
+}
+semsearch-dup-new-many = { $count } PDFs you just added are identical to files already in your library:
+semsearch-dup-new-delete = { $count ->
+    [one] Delete the new file
+   *[other] Delete the new files
+}
+semsearch-dup-new-keep = { $count ->
+    [one] Keep it anyway
+   *[other] Keep them anyway
+}
+semsearch-dup-new-review = Review…

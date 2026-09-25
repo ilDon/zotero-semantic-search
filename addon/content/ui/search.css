@@ -532,6 +532,95 @@ progress {
 	color: var(--ss-muted);
 }
 
+/* ---------------------------------------------------------------- duplicates */
+
+.view-desc {
+	margin: 0 0 8px;
+	color: var(--ss-muted);
+	line-height: 1.4;
+}
+
+.dup-group {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 10px 12px;
+	border: 1px solid var(--ss-border);
+	border-radius: var(--ss-radius);
+}
+
+.dup-group.busy {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+.dup-head {
+	display: flex;
+	gap: 8px;
+	align-items: baseline;
+	font-size: 11.5px;
+	color: var(--ss-muted);
+}
+
+.dup-file {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dup-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 6px 4px;
+	border-top: 1px solid var(--ss-border);
+}
+
+.dup-row input {
+	margin-top: 3px;
+}
+
+.dup-row .meta {
+	flex: 1;
+	min-width: 0;
+}
+
+.dup-title {
+	display: flex;
+	gap: 8px;
+	align-items: baseline;
+	flex-wrap: wrap;
+}
+
+.dup-title .title {
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.dup-badge {
+	font-size: 10.5px;
+	padding: 0 6px;
+	border-radius: 8px;
+	border: 1px solid currentColor;
+	color: #b25d00;
+}
+
+.dup-badge.ok {
+	color: #1a7f37;
+}
+
+.dup-extras {
+	display: flex;
+	gap: 10px;
+}
+
+.dup-group .actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding-top: 4px;
+}
+
 /* ---------------------------------------------------------------- excluded list */
 
 .excluded-row {
