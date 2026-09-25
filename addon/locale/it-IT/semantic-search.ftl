@@ -194,3 +194,6 @@ semsearch-model-indicator = Modello: { $model }
 semsearch-model-indicator-switching = Modello: { $model } → { $next }
     .title = Passaggio a { $next } in corso: le ricerche usano { $model } finché il nuovo indice non è pronto. Fai clic per aprire le impostazioni.
 semsearch-new-search = Nuova ricerca
+semsearch-toolbar-button =
+    .tooltiptext = Ricerca semantica ({ $shortcut })
+    .label = Ricerca semantica
