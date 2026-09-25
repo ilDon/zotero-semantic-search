@@ -1,5 +1,5 @@
 /* global Zotero, Services, ChromeUtils */
-/* global SSModels, SSEvents, SSModelManager, SSStore, SSVectorIndex, SSEmbedder, SSPassages, SSSearch, SSIndexer, SSOcr, SSMcpEndpoint, SSUI */
+/* global SSModels, SSEvents, SSModelManager, SSStore, SSVectorIndex, SSEmbedder, SSPassages, SSSearch, SSIndexer, SSDuplicates, SSOcr, SSMcpEndpoint, SSUI */
 var { setTimeout, clearTimeout, setInterval, clearInterval } = ChromeUtils.importESModule(
 	'resource://gre/modules/Timer.sys.mjs'
 );
@@ -13,7 +13,7 @@ var SemanticSearchPlugin = {
 		this.version = version;
 		this.rootURI = rootURI;
 		for (let f of ['mcp', 'models', 'f16', 'model-manager', 'embedding-store', 'store', 'vector-index',
-			'embedder', 'passages', 'search', 'indexer', 'ocr', 'mcp-endpoint', 'ui']) {
+			'embedder', 'passages', 'search', 'indexer', 'duplicates', 'ocr', 'mcp-endpoint', 'ui']) {
 			Services.scriptloader.loadSubScript(rootURI + `content/lib/${f}.js`);
 		}
 
@@ -29,6 +29,7 @@ var SemanticSearchPlugin = {
 			passages: SSPassages,
 			search: SSSearch,
 			indexer: SSIndexer,
+			duplicates: SSDuplicates,
 			ocr: SSOcr,
 			mcp: SSMcpEndpoint,
 			ui: SSUI,
@@ -45,6 +46,7 @@ var SemanticSearchPlugin = {
 
 		SSMcpEndpoint.register();
 		SSIndexer.registerNotifier();
+		SSDuplicates.registerNotifier();
 		SSUI.startup(this);
 		SSOcr.startup().catch(e => Zotero.logError(e));
 
@@ -55,6 +57,8 @@ var SemanticSearchPlugin = {
 
 	async _backgroundStart() {
 		this._startupTimer = null;
+		// Hash the library's PDFs to find identical files (independent of the model)
+		SSDuplicates.scan();
 		try {
 			if (!(await SSModelManager.isReady())) return;
 			await SSVectorIndex.load();
@@ -86,6 +90,7 @@ var SemanticSearchPlugin = {
 		try {
 			SSUI.shutdown();
 			SSIndexer.unregisterNotifier();
+			SSDuplicates.unregisterNotifier();
 			SSIndexer.cancel();
 			SSOcr.shutdown();
 			SSMcpEndpoint.unregister();

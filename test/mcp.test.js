@@ -93,3 +93,12 @@ test('added_after is validated and passed to the service', async () => {
 	const tool = TOOLS.find(t => t.name === 'semantic_search');
 	assert.strictEqual(tool.inputSchema.properties.added_after.type, 'string');
 });
+
+test('create_parent_item validates its arguments before calling the service', async () => {
+	let r = await handle(rpc('tools/call', { name: 'create_parent_item', arguments: { attachment_key: 'K', item_type: 'book' } }), service);
+	assert.strictEqual(r.result.isError, true);
+	r = await handle(rpc('tools/call', { name: 'create_parent_item', arguments: { attachment_key: 'K', item_type: 'book', title: 'T', fields: [] } }), service);
+	assert.strictEqual(r.result.isError, true);
+	const tool = TOOLS.find(t => t.name === 'create_parent_item');
+	assert.strictEqual(tool.annotations.readOnlyHint, false);
+});

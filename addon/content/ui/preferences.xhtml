@@ -26,10 +26,6 @@
 			</html:div>
 		</html:div>
 		<html:div id="semsearch-indexes" class="ss-indexes"/>
-		<html:div id="semsearch-migration-notice" class="ss-warning" hidden="true">
-			<html:span id="semsearch-migration-text"/>
-			<html:button id="semsearch-migration-show" data-l10n-id="semsearch-show-file"/>
-		</html:div>
 	</groupbox>
 
 	<groupbox>
@@ -57,7 +53,6 @@
 		<html:div id="semsearch-index-status" class="ss-status"/>
 		<html:div class="ss-buttons">
 			<html:button id="semsearch-index-new" data-l10n-id="semsearch-index-new"/>
-			<html:button id="semsearch-upgrade-legacy" data-l10n-id="semsearch-prefs-upgrade-legacy"/>
 		</html:div>
 	</groupbox>
 
@@ -68,6 +63,10 @@
 		<html:label class="ss-check">
 			<html:input id="semsearch-mcp-enabled" type="checkbox"/>
 			<html:span data-l10n-id="semsearch-prefs-mcp-enable"/>
+		</html:label>
+		<html:label class="ss-check">
+			<html:input id="semsearch-mcp-writes" type="checkbox"/>
+			<html:span data-l10n-id="semsearch-prefs-mcp-writes"/>
 		</html:label>
 		<html:div class="ss-code-row">
 			<html:input id="semsearch-mcp-url" type="text" readonly="true"/>

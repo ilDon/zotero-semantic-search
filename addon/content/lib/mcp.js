@@ -21,19 +21,19 @@
 
 	/**
 	 * Server instructions. `model` describes the active embedding model:
-	 * {label, languages, paragraph, short} (similarity guidance); defaults to
-	 * LEALLA-large, the model of earlier versions.
+	 * {label, languages, paragraph, short} (similarity guidance), and
+	 * approximate: true if some passages have approximate text.
 	 */
 	function instructions(model) {
-		const m = Object.assign({ label: 'LEALLA-large', languages: 109, paragraph: '0.6+', short: '0.45-0.55' }, model || {});
+		const m = Object.assign({ label: 'Multilingual E5 small', languages: 94, paragraph: '0.88+', short: '0.84-0.87' }, model || {});
 		return `This server searches the user's Zotero library by meaning (not keywords).
 Every PDF in the library is split into passages and embedded with ${m.label}, a
 multilingual (${m.languages} languages) sentence encoder; a query is embedded the same way and passages
 are ranked by cosine similarity. Queries work best as a full sentence or short paragraph that
 states the idea you are looking for (e.g. a sentence from the user's draft), in any language.
 Similarity depends on the model and on query length: with paragraph-long queries ${m.paragraph} is a good
-match; with short queries (a phrase or one sentence) ${m.short} is already relevant. Passage text of
-documents indexed by the old version of this tool is located approximately (text_is_approximate).
+match; with short queries (a phrase or one sentence) ${m.short} is already relevant.${m.approximate ? `
+The text of some passages indexed in long sections is located approximately (text_is_approximate).` : ''}
 Use semantic_search first, then get_passage for more context around a hit and get_item for
 bibliographic details. Cite works using the metadata returned by get_item.`;
 	}
@@ -120,6 +120,61 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 			annotations: { readOnlyHint: true, openWorldHint: false },
 		},
 		{
+			name: 'list_attachments_without_parent',
+			title: 'List PDFs without a parent item',
+			description: 'PDF attachments that are standalone items (no parent item, hence no bibliographic metadata), '
+				+ 'newest first. Use create_parent_item to give them one.',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					limit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+					offset: { type: 'integer', minimum: 0, default: 0 },
+				},
+			},
+			annotations: { readOnlyHint: true, openWorldHint: false },
+		},
+		{
+			name: 'create_parent_item',
+			title: 'Create a parent item for a PDF',
+			description: 'Create a Zotero item with bibliographic metadata and make a standalone PDF attachment its child '
+				+ '(like "Create Parent Item" in Zotero). Only for attachments without a parent item. Use get_passage '
+				+ 'or semantic_search to read the PDF (title page, colophon) and fill the metadata from it; do not invent '
+				+ 'values you cannot find. Fields that are not valid for the item type are reported and ignored.',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					attachment_key: { type: 'string', description: 'Key of the standalone PDF attachment.' },
+					item_type: {
+						type: 'string',
+						description: 'Zotero item type, e.g. "book", "bookSection", "journalArticle", "thesis", "report", '
+							+ '"conferencePaper", "case", "statute", "document".',
+					},
+					title: { type: 'string' },
+					creators: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								first_name: { type: 'string' },
+								last_name: { type: 'string' },
+								name: { type: 'string', description: 'Single-field name (institutions); instead of first/last name.' },
+								creator_type: { type: 'string', default: 'author', description: 'e.g. author, editor, contributor.' },
+							},
+						},
+					},
+					fields: {
+						type: 'object',
+						additionalProperties: { type: 'string' },
+						description: 'Other Zotero fields, e.g. {"date": "2021", "publisher": "Il Mulino", "place": "Bologna", '
+							+ '"publicationTitle": "...", "volume": "3", "pages": "12-34", "DOI": "...", "ISBN": "...", "language": "it"}.',
+					},
+					tags: { type: 'array', items: { type: 'string' } },
+				},
+				required: ['attachment_key', 'item_type', 'title'],
+			},
+			annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+		},
+		{
 			name: 'list_saved_searches',
 			title: 'List saved searches',
 			description: 'Searches previously run by the user (the search history), newest first.',
@@ -174,6 +229,17 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 				return toolResult(await service.indexStatus());
 			case 'list_saved_searches':
 				return toolResult(await service.listSearches(args));
+			case 'list_attachments_without_parent':
+				return toolResult(await service.listOrphanAttachments(args));
+			case 'create_parent_item':
+				if (!args.attachment_key || !args.item_type || typeof args.title !== 'string' || !args.title.trim()) {
+					return toolError('attachment_key, item_type and a non-empty title are required');
+				}
+				if (args.creators !== undefined && !Array.isArray(args.creators)) return toolError('creators must be an array');
+				if (args.fields !== undefined && (typeof args.fields !== 'object' || Array.isArray(args.fields))) {
+					return toolError('fields must be an object');
+				}
+				return toolResult(await service.createParentItem(args));
 			default:
 				return null;
 		}

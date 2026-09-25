@@ -9,6 +9,7 @@ var SSUI = {
 	WINDOW_URL: 'chrome://semantic-search/content/ui/search.xhtml',
 	WINDOW_TYPE: 'zotero:semantic-search',
 	ICON: 'chrome://semantic-search/content/icons/semantic-search.svg',
+	TOOLBAR_ICON: 'chrome://semantic-search/content/icons/search-ai.svg',
 	FTL: 'semantic-search.ftl',
 
 	_menuIDs: [],
@@ -61,12 +62,37 @@ var SSUI = {
 		key.setAttribute('modifiers', 'accel,shift');
 		key.addEventListener('command', () => this.openWindow());
 		keyset.appendChild(key);
+		this._addToolbarButton(doc);
+	},
+
+	/** Button next to the search box of the items toolbar */
+	_addToolbarButton(doc) {
+		if (doc.getElementById('semsearch-tb-button')) return;
+		let search = doc.getElementById('zotero-tb-search');
+		if (!search || !search.parentElement) return;
+		let button = doc.createXULElement('toolbarbutton');
+		button.id = 'semsearch-tb-button';
+		button.className = 'zotero-tb-button';
+		button.setAttribute('tabindex', '-1');
+		doc.l10n.setAttributes(button, 'semsearch-toolbar-button', { shortcut: Zotero.isMac ? '⌘⇧E' : 'Ctrl+Shift+E' });
+		button.style.listStyleImage = `url("${this.TOOLBAR_ICON}")`;
+		// same tint as Zotero's own toolbar icons (light and dark mode)
+		button.style.fill = 'var(--fill-secondary)';
+		button.style.setProperty('-moz-context-properties', 'fill, fill-opacity');
+		button.addEventListener('command', () => this.openWindow());
+		// before the spinner that precedes the search box, if any
+		let before = search.previousElementSibling && search.previousElementSibling.id === 'zotero-tb-search-spinner'
+			? search.previousElementSibling
+			: search;
+		search.parentElement.insertBefore(button, before);
 	},
 
 	onMainWindowUnload(win) {
 		let doc = win.document;
 		let key = doc.getElementById('semsearch-key');
 		if (key) key.remove();
+		let button = doc.getElementById('semsearch-tb-button');
+		if (button) button.remove();
 		let link = doc.querySelector(`link[href="${this.FTL}"]`);
 		if (link) link.remove();
 	},

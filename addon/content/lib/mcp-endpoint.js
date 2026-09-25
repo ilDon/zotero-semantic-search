@@ -105,6 +105,7 @@ var SSMcpEndpoint = {
 			date_added: r.dateAdded ? r.dateAdded.slice(0, 10) : null,
 			item_key: r.itemKey || null,
 			attachment_key: r.folder_id,
+			has_parent_item: r.hasParent !== undefined ? r.hasParent : null,
 			section: r.section_number,
 			page,
 			text: r.textPending ? null : text,
@@ -277,6 +278,10 @@ var SSMcpEndpoint = {
 			return {
 				item_key: parent.key,
 				item_type: Zotero.ItemTypes.getName(parent.itemTypeID),
+				...(parent.isAttachment() ? {
+					standalone_attachment: true,
+					note: 'This PDF has no parent item (no bibliographic metadata): create one with create_parent_item.',
+				} : {}),
 				creators: parent.getCreators().map(c => ({
 					type: Zotero.CreatorTypes.getName(c.creatorTypeID),
 					first_name: c.firstName || undefined,
@@ -342,6 +347,101 @@ var SSMcpEndpoint = {
 			let list = await SSStore.listHistory();
 			return {
 				searches: list.slice(0, limit).map(h => ({ query: h.query, date: h.date, results: h.count })),
+			};
+		},
+
+		async listOrphanAttachments(args) {
+			let limit = Math.min(200, Math.max(1, parseInt(args.limit) || 50));
+			let offset = Math.max(0, parseInt(args.offset) || 0);
+			let sql = `FROM itemAttachments IA JOIN items I USING (itemID)
+				WHERE IA.contentType = 'application/pdf' AND IA.parentItemID IS NULL
+				AND IA.itemID NOT IN (SELECT itemID FROM deletedItems)`;
+			let total = await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) ${sql}`);
+			let ids = await Zotero.DB.columnQueryAsync(`SELECT itemID ${sql} ORDER BY I.dateAdded DESC LIMIT ? OFFSET ?`, [limit, offset]);
+			let items = await Zotero.Items.getAsync(ids);
+			return {
+				total,
+				attachments: items.map(a => ({
+					attachment_key: a.key,
+					title: a.getField('title'),
+					file_name: a.attachmentFilename || null,
+					date_added: a.dateAdded ? a.dateAdded.slice(0, 10) : null,
+					indexed: SSVectorIndex.loaded ? SSVectorIndex.hasDocument(a.key) : undefined,
+				})),
+			};
+		},
+
+		/** "Create Parent Item" for a standalone PDF, with the metadata given by the client */
+		async createParentItem(args) {
+			if (!Zotero.Prefs.get('extensions.semantic-search.mcp.allowWrites', true)) {
+				throw new Error('Changes to the library by AI assistants are disabled in the Semantic Search settings.');
+			}
+			let att = await SSPassages.getItemByKey(String(args.attachment_key));
+			if (!att || !att.isAttachment()) throw new Error('No attachment with key ' + args.attachment_key);
+			if (att.parentItem) {
+				throw new Error(`Attachment ${att.key} already has a parent item (${att.parentItem.key}): see get_item`);
+			}
+			let typeID = Zotero.ItemTypes.getID(String(args.item_type));
+			if (!typeID || ['attachment', 'note', 'annotation'].includes(args.item_type)) {
+				throw new Error(`Unknown item type "${args.item_type}"`);
+			}
+			let parent = new Zotero.Item(typeID);
+			parent.libraryID = att.libraryID;
+			let set = [];
+			let ignored = [];
+			let setField = (name, value) => {
+				value = String(value).trim();
+				if (!value) return;
+				let fieldID = Zotero.ItemFields.getID(name);
+				// base fields (e.g. "publisher") map to the type's own field (e.g. "university")
+				if (fieldID && !Zotero.ItemFields.isValidForType(fieldID, typeID)) {
+					fieldID = Zotero.ItemFields.getFieldIDFromTypeAndBase(typeID, fieldID) || null;
+				}
+				if (!fieldID || !Zotero.ItemFields.isValidForType(fieldID, typeID)) {
+					ignored.push(name);
+					return;
+				}
+				parent.setField(fieldID, value);
+				set.push(Zotero.ItemFields.getName(fieldID));
+			};
+			setField('title', args.title);
+			for (let [name, value] of Object.entries(args.fields || {})) {
+				if (name === 'title') continue;
+				setField(name, value);
+			}
+			let creators = [];
+			let primary = Zotero.CreatorTypes.getName(Zotero.CreatorTypes.getPrimaryIDForType(typeID));
+			for (let c of args.creators || []) {
+				if (!c || typeof c !== 'object') continue;
+				let type = c.creator_type || primary;
+				let ctID = Zotero.CreatorTypes.getID(type);
+				if (!ctID || !Zotero.CreatorTypes.isValidForItemType(ctID, typeID)) type = primary;
+				if (c.name) creators.push({ name: String(c.name), creatorType: type, fieldMode: 1 });
+				else if (c.last_name || c.first_name) {
+					creators.push({ firstName: String(c.first_name || ''), lastName: String(c.last_name || ''), creatorType: type });
+				}
+			}
+			if (creators.length) parent.setCreators(creators);
+			for (let t of args.tags || []) {
+				if (String(t).trim()) parent.addTag(String(t).trim());
+			}
+			// Child items cannot be in collections: the parent takes the attachment's place
+			let collections = att.getCollections();
+			await Zotero.DB.executeTransaction(async () => {
+				parent.setCollections(collections);
+				await parent.save();
+				att.parentID = parent.id;
+				att.setCollections([]);
+				await att.save();
+			});
+			return {
+				item_key: parent.key,
+				attachment_key: att.key,
+				item_type: args.item_type,
+				fields_set: set,
+				...(ignored.length ? { fields_ignored: ignored, note: 'These fields are not valid for this item type.' } : {}),
+				creators: creators.length,
+				zotero_select: `zotero://select/library/items/${parent.key}`,
 			};
 		},
 	},

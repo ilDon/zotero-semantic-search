@@ -52,6 +52,12 @@ window {
 	padding-bottom: 0;
 }
 
+#sidebar .new-search {
+	width: 100%;
+	margin: 0 0 14px !important;
+	padding: 5px 8px;
+}
+
 #sidebar h2 {
 	margin: 0 0 8px;
 	font-size: 11px;
@@ -110,6 +116,23 @@ window {
 	font-size: 11px;
 	color: var(--ss-muted);
 	font-variant-numeric: tabular-nums;
+}
+
+.model-chip {
+	appearance: none;
+	margin-inline-start: auto;
+	padding: 2px 9px;
+	border: 1px solid rgba(127, 127, 127, 0.4);
+	border-radius: 11px;
+	background: transparent;
+	color: var(--ss-muted);
+	font-size: 11.5px;
+	cursor: pointer;
+}
+
+.model-chip:hover {
+	color: inherit;
+	border-color: currentColor;
 }
 
 .history-model {
@@ -224,6 +247,10 @@ progress {
 	min-height: 0;
 }
 
+#query-form[hidden] {
+	display: none;
+}
+
 #query-form {
 	padding: 14px 18px 10px;
 	display: flex;
@@ -283,7 +310,7 @@ progress {
 }
 
 .hint {
-	margin-inline-start: auto;
+	margin-inline-start: -4px;
 	color: var(--ss-muted);
 	font-size: 11px;
 }
@@ -503,6 +530,95 @@ progress {
 .dup-note {
 	font-size: 11.5px;
 	color: var(--ss-muted);
+}
+
+/* ---------------------------------------------------------------- duplicates */
+
+.view-desc {
+	margin: 0 0 8px;
+	color: var(--ss-muted);
+	line-height: 1.4;
+}
+
+.dup-group {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 10px 12px;
+	border: 1px solid var(--ss-border);
+	border-radius: var(--ss-radius);
+}
+
+.dup-group.busy {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+.dup-head {
+	display: flex;
+	gap: 8px;
+	align-items: baseline;
+	font-size: 11.5px;
+	color: var(--ss-muted);
+}
+
+.dup-file {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dup-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 6px 4px;
+	border-top: 1px solid var(--ss-border);
+}
+
+.dup-row input {
+	margin-top: 3px;
+}
+
+.dup-row .meta {
+	flex: 1;
+	min-width: 0;
+}
+
+.dup-title {
+	display: flex;
+	gap: 8px;
+	align-items: baseline;
+	flex-wrap: wrap;
+}
+
+.dup-title .title {
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.dup-badge {
+	font-size: 10.5px;
+	padding: 0 6px;
+	border-radius: 8px;
+	border: 1px solid currentColor;
+	color: #b25d00;
+}
+
+.dup-badge.ok {
+	color: #1a7f37;
+}
+
+.dup-extras {
+	display: flex;
+	gap: 10px;
+}
+
+.dup-group .actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding-top: 4px;
 }
 
 /* ---------------------------------------------------------------- excluded list */

@@ -26,12 +26,14 @@
 	<html:div id="app">
 		<html:aside id="sidebar">
 			<html:div class="sidebar-section sidebar-history">
+				<html:button id="new-search-button" class="new-search" data-l10n-id="semsearch-new-search"/>
 				<html:h2 data-l10n-id="semsearch-history"/>
 				<html:input id="history-filter" type="search" data-l10n-id="semsearch-history-filter"/>
 				<html:ul id="history-list" tabindex="0"/>
 			</html:div>
 			<html:div class="sidebar-section sidebar-footer">
 				<html:button id="excluded-button" class="link-button"/>
+				<html:button id="duplicates-button" class="link-button" hidden="true"/>
 				<html:div id="status-panel"/>
 			</html:div>
 		</html:aside>
@@ -41,6 +43,7 @@
 				<html:textarea id="query" rows="4" data-l10n-id="semsearch-query-placeholder"/>
 				<html:div class="query-controls">
 					<html:button id="search-button" type="submit" class="primary" data-l10n-id="semsearch-search"/>
+					<html:span class="hint">⌘↩</html:span>
 					<html:label class="control">
 						<html:span data-l10n-id="semsearch-threshold"/>
 						<html:input id="threshold" type="number" min="0.1" max="0.99" step="0.01"/>
@@ -56,7 +59,7 @@
 						<html:option value="1" data-l10n-id="semsearch-filter-cited"/>
 						<html:option value="2" data-l10n-id="semsearch-filter-irrelevant"/>
 					</html:select>
-					<html:span class="hint">⌘↩</html:span>
+					<html:button id="model-indicator" class="model-chip"/>
 				</html:div>
 			</html:form>
 

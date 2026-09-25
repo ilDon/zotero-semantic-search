@@ -30,7 +30,7 @@ semsearch-pane-header =
 semsearch-pane-sidenav =
     .tooltiptext = Semantic Search
 semsearch-pane-indexed = Indexed: { $count } passages ({ $date })
-semsearch-pane-indexed-legacy = Indexed by the previous version: { $count } sections ({ $date })
+semsearch-pane-indexed-legacy = Indexed in long sections: { $count } sections ({ $date })
 semsearch-pane-not-indexed = Not indexed yet
 semsearch-pane-excluded = Excluded ({ $reason })
 semsearch-pane-no-pdf = No PDF attachment
@@ -48,12 +48,12 @@ semsearch-prefs-auto-index = Automatically index new PDFs
 semsearch-prefs-workers = Parallel indexing workers:
 semsearch-prefs-model = Embedding model
 semsearch-prefs-model-desc = The model that turns passages and queries into vectors. It runs locally in Zotero. Each model has its own index: changing model indexes all your PDFs again, in the background.
-semsearch-model-option-lealla = LEALLA-large (compatible with the original app)
+semsearch-model-option-lealla = LEALLA-large (109 languages, for translations)
 semsearch-model-option-e5-small = Multilingual E5 small (recommended)
 semsearch-model-option-arctic-m-v2 = Arctic Embed M v2 (highest accuracy)
-semsearch-model-info-lealla = 109 languages. The model of the original Python app and of earlier versions: existing indexes keep working. The least accurate of the three. Download: { $size } MB.
+semsearch-model-info-lealla = The model with the most languages: 109. Designed to match sentences with the same meaning across languages (such as a text and its translation), it can help with libraries in many languages. The least accurate of the three at finding related ideas. Download: { $size } MB.
 semsearch-model-info-e5-small = About 100 languages. Much more accurate than LEALLA-large and a bit faster at indexing. Download: { $size } MB.
-semsearch-model-info-arctic-m-v2 = 74 languages (all major European and Asian ones). The most accurate, especially when query and passages are in different languages, but indexing takes about 3 times as long as with LEALLA-large. Download: { $size } MB.
+semsearch-model-info-arctic-m-v2 = 74 languages (all major European and Asian ones). The most accurate, especially when query and passages are in different languages, but indexing takes about 3 times as long as with E5. Download: { $size } MB.
 semsearch-model-switch-title = Switch to { $model }?
 semsearch-model-switch-new = { $model } will be downloaded ({ $size } MB) and all your PDFs will be indexed with it, in the background. This can take many hours for a large library. Until it is finished, searches keep using { $current }.
 semsearch-model-switch-keep = The { $current } index is kept: you can switch back at any time.
@@ -71,8 +71,6 @@ semsearch-index-row = { $model }: { $size }
 semsearch-index-in-use = in use
 semsearch-index-delete = Delete
 semsearch-index-delete-confirm = Delete the { $model } index ({ $size })? Switching back to { $model } will require indexing all PDFs again.
-semsearch-migration-notice = Two LEALLA-large databases were found: { $legacy } was probably re-created by an older version of this plugin on another computer that shares this data directory. { $target } is used. Update the plugin on all your computers, then you can delete the older file.
-semsearch-show-file = Show file
 semsearch-prefs-database = Database
 semsearch-prefs-mcp = MCP server for AI assistants
 semsearch-prefs-mcp-enable = Enable the local MCP endpoint
@@ -82,8 +80,6 @@ semsearch-prefs-mcp-desktop = Claude Desktop: install the extension (.mcpb) from
 semsearch-prefs-copy = Copy
 semsearch-prefs-maintenance = Maintenance
 semsearch-prefs-rebuild-cache = Rebuild vector cache
-semsearch-prefs-upgrade-legacy = Re-index documents of the previous version…
-semsearch-prefs-upgrade-legacy-confirm = { $count } documents were indexed by the previous version, which only embedded the beginning of every 2500-character section. Re-indexing embeds their full text and stores passage text and pages, but takes many hours, produces about 5 times more passages (the database and memory use grow accordingly) and changes their passages (results saved in the history for them may no longer point to the right passage). Continue?
 
 semsearch-model-missing = The embedding model ({ $model }, { $size } MB) must be downloaded once before searching.
 semsearch-model-download = Download model
@@ -145,7 +141,7 @@ semsearch-exclude-doc = Exclude document
 semsearch-status-todo = To review
 semsearch-status-cited = Cited
 semsearch-status-irrelevant = Irrelevant
-semsearch-approximate = Approximate position (document indexed by the previous version)
+semsearch-approximate = Approximate position (document indexed in long sections)
 semsearch-locate = Find exact passage
 semsearch-locating = Locating…
 semsearch-page = p. { $page }
@@ -189,3 +185,60 @@ semsearch-history-model =
     .title = Results of { $model }
 semsearch-results-other-model = found with { $model }
 semsearch-rerun-with = Search again with { $model }
+semsearch-model-indicator = Model: { $model }
+    .title = Embedding model used for searching. Click to change it in the settings.
+semsearch-model-indicator-switching = Model: { $model } → { $next }
+    .title = Switching to { $next }: searches use { $model } until its index is ready. Click to open the settings.
+semsearch-new-search = New search
+semsearch-toolbar-button =
+    .tooltiptext = Semantic Search ({ $shortcut })
+    .label = Semantic Search
+semsearch-prefs-mcp-writes = Allow AI assistants to add metadata to the library (create parent items for PDFs that have none)
+semsearch-duplicates = { $count ->
+    [one] { $count } duplicate PDF
+   *[other] { $count } duplicate PDFs
+}
+semsearch-dup-title = Duplicate PDFs
+semsearch-dup-desc = These files are identical, byte for byte. Merge them into one item (metadata, notes, tags, collections and annotations are combined; on conflicting fields the most recently modified item wins), or tick the copies to move to the trash.
+semsearch-dup-scanning = Checking the library for identical files… { $done } of { $total }
+semsearch-dup-empty = No duplicate PDFs found.
+semsearch-dup-copies = { $count } identical copies
+semsearch-dup-has-metadata = with metadata ({ $count } fields)
+semsearch-dup-no-metadata = parent item without metadata
+semsearch-dup-no-parent = no parent item
+semsearch-dup-notes = { $count ->
+    [one] 1 note
+   *[other] { $count } notes
+}
+semsearch-dup-annotations = { $count ->
+    [one] 1 annotation
+   *[other] { $count } annotations
+}
+semsearch-dup-collections = { $count ->
+    [one] in 1 collection
+   *[other] in { $count } collections
+}
+semsearch-dup-added = added { $date }
+semsearch-dup-merge = Merge all
+semsearch-dup-merge-confirm = Merge these { $count } items into “{ $title }”? The others are moved to the trash.
+semsearch-dup-trash = Move selected to trash
+semsearch-dup-trash-confirm = Move { $count } selected { $count ->
+    [one] copy
+   *[other] copies
+} to the trash? Parent items left without attachments or notes are moved too.
+semsearch-dup-ignore = Keep all (not duplicates)
+semsearch-dup-new-title = Duplicate PDF
+semsearch-dup-new-one = The PDF you just added, “{ $title }”, is identical to { $count ->
+    [one] a file already in your library: “{ $other }”.
+   *[other] { $count } files already in your library, e.g. “{ $other }”.
+}
+semsearch-dup-new-many = { $count } PDFs you just added are identical to files already in your library:
+semsearch-dup-new-delete = { $count ->
+    [one] Delete the new file
+   *[other] Delete the new files
+}
+semsearch-dup-new-keep = { $count ->
+    [one] Keep it anyway
+   *[other] Keep them anyway
+}
+semsearch-dup-new-review = Review…

@@ -30,7 +30,7 @@ semsearch-pane-header =
 semsearch-pane-sidenav =
     .tooltiptext = Ricerca semantica
 semsearch-pane-indexed = Indicizzato: { $count } passaggi ({ $date })
-semsearch-pane-indexed-legacy = Indicizzato dalla versione precedente: { $count } sezioni ({ $date })
+semsearch-pane-indexed-legacy = Indicizzato in sezioni lunghe: { $count } sezioni ({ $date })
 semsearch-pane-not-indexed = Non ancora indicizzato
 semsearch-pane-excluded = Escluso ({ $reason })
 semsearch-pane-no-pdf = Nessun allegato PDF
@@ -48,12 +48,12 @@ semsearch-prefs-auto-index = Indicizza automaticamente i nuovi PDF
 semsearch-prefs-workers = Processi di indicizzazione in parallelo:
 semsearch-prefs-model = Modello di embedding
 semsearch-prefs-model-desc = Il modello che trasforma passaggi e ricerche in vettori. Funziona localmente in Zotero. Ogni modello ha il suo indice: cambiare modello reindicizza tutti i PDF, in background.
-semsearch-model-option-lealla = LEALLA-large (compatibile con l’app originale)
+semsearch-model-option-lealla = LEALLA-large (109 lingue, per traduzioni)
 semsearch-model-option-e5-small = Multilingual E5 small (consigliato)
 semsearch-model-option-arctic-m-v2 = Arctic Embed M v2 (massima accuratezza)
-semsearch-model-info-lealla = 109 lingue. Il modello dell’app Python originale e delle versioni precedenti: gli indici esistenti continuano a funzionare. Il meno accurato dei tre. Download: { $size } MB.
+semsearch-model-info-lealla = Il modello con più lingue: 109. Progettato per riconoscere frasi con lo stesso significato in lingue diverse (come un testo e la sua traduzione), può essere utile per biblioteche in molte lingue. Il meno accurato dei tre nel trovare idee affini. Download: { $size } MB.
 semsearch-model-info-e5-small = Circa 100 lingue. Molto più accurato di LEALLA-large e un po’ più veloce da indicizzare. Download: { $size } MB.
-semsearch-model-info-arctic-m-v2 = 74 lingue (tutte le principali lingue europee e asiatiche). Il più accurato, soprattutto quando ricerca e passaggi sono in lingue diverse, ma l’indicizzazione richiede circa 3 volte il tempo di LEALLA-large. Download: { $size } MB.
+semsearch-model-info-arctic-m-v2 = 74 lingue (tutte le principali lingue europee e asiatiche). Il più accurato, soprattutto quando ricerca e passaggi sono in lingue diverse, ma l’indicizzazione richiede circa 3 volte il tempo di E5. Download: { $size } MB.
 semsearch-model-switch-title = Passare a { $model }?
 semsearch-model-switch-new = { $model } verrà scaricato ({ $size } MB) e tutti i tuoi PDF verranno indicizzati con questo modello, in background. Con una libreria grande possono servire molte ore. Fino ad allora le ricerche continuano a usare { $current }.
 semsearch-model-switch-keep = L’indice di { $current } viene conservato: puoi tornare indietro in qualsiasi momento.
@@ -71,8 +71,6 @@ semsearch-index-row = { $model }: { $size }
 semsearch-index-in-use = in uso
 semsearch-index-delete = Elimina
 semsearch-index-delete-confirm = Eliminare l’indice di { $model } ({ $size })? Per tornare a { $model } bisognerà indicizzare di nuovo tutti i PDF.
-semsearch-migration-notice = Sono stati trovati due database di LEALLA-large: { $legacy } è stato probabilmente ricreato da una versione precedente del plugin su un altro computer che condivide questa cartella dati. Viene usato { $target }. Aggiorna il plugin su tutti i computer, poi puoi eliminare il file più vecchio.
-semsearch-show-file = Mostra il file
 semsearch-prefs-database = Database
 semsearch-prefs-mcp = Server MCP per assistenti AI
 semsearch-prefs-mcp-enable = Attiva l’endpoint MCP locale
@@ -82,8 +80,6 @@ semsearch-prefs-mcp-desktop = Claude Desktop: installa l’estensione (.mcpb) da
 semsearch-prefs-copy = Copia
 semsearch-prefs-maintenance = Manutenzione
 semsearch-prefs-rebuild-cache = Ricostruisci la cache dei vettori
-semsearch-prefs-upgrade-legacy = Reindicizza i documenti della versione precedente…
-semsearch-prefs-upgrade-legacy-confirm = { $count } documenti sono stati indicizzati dalla versione precedente, che codificava solo l’inizio di ogni sezione di 2500 caratteri. La reindicizzazione codifica tutto il testo e salva testo e pagina dei passaggi, ma richiede molte ore, produce circa 5 volte più passaggi (database e memoria usata crescono di conseguenza) e cambia i loro passaggi (i risultati salvati nella cronologia per questi documenti potrebbero non puntare più al passaggio giusto). Continuare?
 
 semsearch-model-missing = Prima di cercare occorre scaricare una volta il modello di embedding ({ $model }, { $size } MB).
 semsearch-model-download = Scarica il modello
@@ -145,7 +141,7 @@ semsearch-exclude-doc = Escludi documento
 semsearch-status-todo = Da vedere
 semsearch-status-cited = Citato
 semsearch-status-irrelevant = Irrilevante
-semsearch-approximate = Posizione stimata (documento indicizzato dalla versione precedente)
+semsearch-approximate = Posizione stimata (documento indicizzato in sezioni lunghe)
 semsearch-locate = Trova il passaggio esatto
 semsearch-locating = Ricerca del passaggio…
 semsearch-page = p. { $page }
@@ -189,3 +185,60 @@ semsearch-history-model =
     .title = Risultati di { $model }
 semsearch-results-other-model = trovati con { $model }
 semsearch-rerun-with = Ripeti la ricerca con { $model }
+semsearch-model-indicator = Modello: { $model }
+    .title = Modello di embedding usato per la ricerca. Fai clic per cambiarlo nelle impostazioni.
+semsearch-model-indicator-switching = Modello: { $model } → { $next }
+    .title = Passaggio a { $next } in corso: le ricerche usano { $model } finché il nuovo indice non è pronto. Fai clic per aprire le impostazioni.
+semsearch-new-search = Nuova ricerca
+semsearch-toolbar-button =
+    .tooltiptext = Ricerca semantica ({ $shortcut })
+    .label = Ricerca semantica
+semsearch-prefs-mcp-writes = Consenti agli assistenti AI di aggiungere metadati alla libreria (creare elementi genitore per i PDF che non ne hanno)
+semsearch-duplicates = { $count ->
+    [one] { $count } PDF duplicato
+   *[other] { $count } PDF duplicati
+}
+semsearch-dup-title = PDF duplicati
+semsearch-dup-desc = Questi file sono identici, byte per byte. Uniscili in un solo elemento (metadati, note, tag, collezioni e annotazioni vengono riuniti; sui campi in conflitto vince l’elemento modificato più di recente), oppure spunta le copie da spostare nel cestino.
+semsearch-dup-scanning = Ricerca di file identici nella libreria… { $done } di { $total }
+semsearch-dup-empty = Nessun PDF duplicato.
+semsearch-dup-copies = { $count } copie identiche
+semsearch-dup-has-metadata = con metadati ({ $count } campi)
+semsearch-dup-no-metadata = elemento genitore senza metadati
+semsearch-dup-no-parent = nessun elemento genitore
+semsearch-dup-notes = { $count ->
+    [one] 1 nota
+   *[other] { $count } note
+}
+semsearch-dup-annotations = { $count ->
+    [one] 1 annotazione
+   *[other] { $count } annotazioni
+}
+semsearch-dup-collections = { $count ->
+    [one] in 1 collezione
+   *[other] in { $count } collezioni
+}
+semsearch-dup-added = aggiunto il { $date }
+semsearch-dup-merge = Unisci tutti
+semsearch-dup-merge-confirm = Unire questi { $count } elementi in «{ $title }»? Gli altri vengono spostati nel cestino.
+semsearch-dup-trash = Sposta nel cestino i selezionati
+semsearch-dup-trash-confirm = Spostare nel cestino { $count ->
+    [one] la copia selezionata
+   *[other] le { $count } copie selezionate
+}? Gli elementi genitore che restano senza allegati né note vengono spostati anch’essi.
+semsearch-dup-ignore = Tienili tutti (non sono duplicati)
+semsearch-dup-new-title = PDF duplicato
+semsearch-dup-new-one = Il PDF appena aggiunto, «{ $title }», è identico a { $count ->
+    [one] un file già presente nella libreria: «{ $other }».
+   *[other] { $count } file già presenti nella libreria, ad es. «{ $other }».
+}
+semsearch-dup-new-many = { $count } PDF appena aggiunti sono identici a file già presenti nella libreria:
+semsearch-dup-new-delete = { $count ->
+    [one] Elimina il nuovo file
+   *[other] Elimina i nuovi file
+}
+semsearch-dup-new-keep = { $count ->
+    [one] Tienilo comunque
+   *[other] Tienili comunque
+}
+semsearch-dup-new-review = Rivedi…
