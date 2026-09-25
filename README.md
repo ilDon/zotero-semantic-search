@@ -29,15 +29,16 @@ Semantic search compares **meanings**. Every passage of every PDF in your librar
 - 🗂️ **Saved searches and review workflow**: every search is kept in the sidebar and reopens instantly. Mark each passage as *To review*, *Cited* or *Irrelevant*.
 - 🔄 **Always up to date**: new PDFs are indexed automatically in the background.
 - 🧭 **Similar documents**: the item pane shows which documents in your library are closest in content to the selected one.
+- 👯 **Duplicate PDFs**: identical files are detected (also when you add a new one) and can be merged into one item, keeping metadata, notes, tags, collections and annotations, or moved to the trash.
 - 📄 **OCR for scanned PDFs**: PDFs without a text layer can be OCRed with one click (via [ocrmypdf](https://ocrmypdf.readthedocs.io)) and then indexed.
-- 🤖 **For AI assistants**: a local MCP server lets Claude Code, Claude Desktop or any MCP client search your library and cite from it.
+- 🤖 **For AI assistants**: a local MCP server lets Claude Code, Claude Desktop or any MCP client search your library and cite from it, and even give PDFs without metadata a proper parent item.
 - 🔒 **Private**: the model runs inside Zotero. Your PDFs and queries never leave your computer.
 - ⬆️ **Updates itself** from GitHub releases.
 
 ## Getting started
 
 1. **Install**: download the `.xpi` from the [latest release](https://github.com/ilDon/zotero-semantic-search/releases/latest). In Zotero go to *Tools → Plugins*, click the gear icon, choose *Install Plugin From File…* and select the file.
-2. **Open** *Tools → Semantic Search…* (<kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd> on macOS, <kbd>Ctrl</kbd><kbd>⇧</kbd><kbd>E</kbd> on Windows/Linux).
+2. **Open** it with the ✨🔍 button next to Zotero's search box, *Tools → Semantic Search…*, or <kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd> (<kbd>Ctrl</kbd><kbd>⇧</kbd><kbd>E</kbd> on Windows/Linux).
 3. **Download the model** when asked. This happens once: about 130 MB for the default model, checksum-verified, stored in your Zotero profile.
 4. **Let it index.** All your PDFs are indexed in the background; progress appears at the bottom of the sidebar. A journal article takes a few seconds, a long book a minute or two. You can search while it runs, and later PDFs are picked up automatically.
 5. **Search.** Type or paste your text and press <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd>.
@@ -121,8 +122,22 @@ Then just ask, for example:
 | `find_similar_items` | Documents most similar to a given one |
 | `index_status` | Size and state of the index |
 | `list_saved_searches` | Your saved searches |
+| `list_attachments_without_parent` | PDFs that have no parent item (hence no bibliographic metadata) |
+| `create_parent_item` | Creates a parent item with the given type, title, creators and fields for such a PDF (like *Create Parent Item* in Zotero) |
 
-Searches made through MCP do not end up in your search history. The endpoint only accepts local, non-browser connections and can be turned off in the preferences.
+Searches made through MCP do not end up in your search history. The endpoint only accepts local, non-browser connections and can be turned off in the preferences. `create_parent_item` is the only tool that changes your library; it can be disabled separately in the preferences.
+
+> *"Find the PDFs in my library that have no metadata, read their first pages and create proper parent items for them."*
+
+## Duplicate PDFs
+
+Every PDF is fingerprinted (SHA-256 of its content) in the background. When identical files are found, *n duplicate PDFs* appears at the bottom of the sidebar of the search window. For each group you see which copy has a parent item with metadata, notes, annotations and collections, and you can:
+
+- **Merge all**: the most recently modified parent item is kept and receives the fields of the others (on conflicts, the most recently modified wins), their notes, tags, collections and related items; the copies of the PDF are merged into one, keeping all annotations. The other items go to the trash.
+- **Move selected to trash**: tick the copies you don't want (a parent item left empty goes too).
+- **Keep all**: for files that are meant to be in the library twice.
+
+When you add a PDF that is identical to one already in the library, you are asked whether to delete the new file, keep it anyway or review the duplicates.
 
 ## OCR for scanned PDFs
 
