@@ -122,10 +122,11 @@ Then just ask, for example:
 | `find_similar_items` | Documents most similar to a given one |
 | `index_status` | Size and state of the index |
 | `list_saved_searches` | Your saved searches |
-| `list_attachments_without_parent` | PDFs that have no parent item (hence no bibliographic metadata) |
+| `list_attachments_without_parent` | PDFs that have no parent item (hence no bibliographic metadata), optionally only those added since a date (`added_after`) |
 | `create_parent_item` | Creates a parent item with the given type, title, creators and fields for such a PDF (like *Create Parent Item* in Zotero) |
+| `create_item` | Creates an item without attachments (e.g. a source to cite); refuses duplicates by DOI/ISBN unless asked |
 
-Searches made through MCP do not end up in your search history. The endpoint only accepts local, non-browser connections and can be turned off in the preferences. `create_parent_item` is the only tool that changes your library; it can be disabled separately in the preferences.
+Searches made through MCP do not end up in your search history. The endpoint only accepts local, non-browser connections and can be turned off in the preferences. `create_parent_item` and `create_item` are the only tools that change your library; they can be disabled separately in the preferences.
 
 > *"Find the PDFs in my library that have no metadata, read their first pages and create proper parent items for them."*
 

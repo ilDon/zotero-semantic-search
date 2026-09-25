@@ -129,6 +129,10 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 				properties: {
 					limit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
 					offset: { type: 'integer', minimum: 0, default: 0 },
+					added_after: {
+						type: 'string',
+						description: 'Only PDFs added to the Zotero library on or after this date (YYYY-MM-DD). Each result reports its date_added.',
+					},
 				},
 			},
 			annotations: { readOnlyHint: true, openWorldHint: false },
@@ -171,6 +175,52 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 					tags: { type: 'array', items: { type: 'string' } },
 				},
 				required: ['attachment_key', 'item_type', 'title'],
+			},
+			annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+		},
+		{
+			name: 'create_item',
+			title: 'Create a Zotero item',
+			description: 'Create a bibliographic item without attachments (e.g. a book or article to cite, found elsewhere). '
+				+ 'Fields that are not valid for the item type are reported and ignored. If an item with the same DOI or ISBN '
+				+ 'already exists, nothing is created and the existing item is returned (unless allow_duplicate is true). '
+				+ 'Do not invent metadata.',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					item_type: {
+						type: 'string',
+						description: 'Zotero item type, e.g. "book", "bookSection", "journalArticle", "thesis", "report", '
+							+ '"conferencePaper", "case", "statute", "webpage", "document".',
+					},
+					title: { type: 'string' },
+					creators: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								first_name: { type: 'string' },
+								last_name: { type: 'string' },
+								name: { type: 'string', description: 'Single-field name (institutions); instead of first/last name.' },
+								creator_type: { type: 'string', default: 'author', description: 'e.g. author, editor, contributor.' },
+							},
+						},
+					},
+					fields: {
+						type: 'object',
+						additionalProperties: { type: 'string' },
+						description: 'Other Zotero fields, e.g. {"date": "2021", "publisher": "Il Mulino", "place": "Bologna", '
+							+ '"publicationTitle": "...", "volume": "3", "pages": "12-34", "DOI": "...", "ISBN": "...", "url": "...", "language": "it"}.',
+					},
+					tags: { type: 'array', items: { type: 'string' } },
+					collections: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Collections to add the item to, by key or by exact name.',
+					},
+					allow_duplicate: { type: 'boolean', default: false, description: 'Create the item even if one with the same DOI or ISBN exists.' },
+				},
+				required: ['item_type', 'title'],
 			},
 			annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
 		},
@@ -230,7 +280,20 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 			case 'list_saved_searches':
 				return toolResult(await service.listSearches(args));
 			case 'list_attachments_without_parent':
+				if (args.added_after !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(args.added_after))) {
+					return toolError('added_after must be a date in the form YYYY-MM-DD');
+				}
 				return toolResult(await service.listOrphanAttachments(args));
+			case 'create_item':
+				if (!args.item_type || typeof args.title !== 'string' || !args.title.trim()) {
+					return toolError('item_type and a non-empty title are required');
+				}
+				if (args.creators !== undefined && !Array.isArray(args.creators)) return toolError('creators must be an array');
+				if (args.collections !== undefined && !Array.isArray(args.collections)) return toolError('collections must be an array');
+				if (args.fields !== undefined && (typeof args.fields !== 'object' || Array.isArray(args.fields))) {
+					return toolError('fields must be an object');
+				}
+				return toolResult(await service.createItem(args));
 			case 'create_parent_item':
 				if (!args.attachment_key || !args.item_type || typeof args.title !== 'string' || !args.title.trim()) {
 					return toolError('attachment_key, item_type and a non-empty title are required');

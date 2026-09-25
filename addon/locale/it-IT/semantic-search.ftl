@@ -193,7 +193,7 @@ semsearch-new-search = Nuova ricerca
 semsearch-toolbar-button =
     .tooltiptext = Ricerca semantica ({ $shortcut })
     .label = Ricerca semantica
-semsearch-prefs-mcp-writes = Consenti agli assistenti AI di aggiungere metadati alla libreria (creare elementi genitore per i PDF che non ne hanno)
+semsearch-prefs-mcp-writes = Consenti agli assistenti AI di aggiungere elementi alla libreria (nuovi elementi, elementi genitore per i PDF che non ne hanno)
 semsearch-duplicates = { $count ->
     [one] { $count } PDF duplicato
    *[other] { $count } PDF duplicati
