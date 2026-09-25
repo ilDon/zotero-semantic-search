@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Semantic Search",
-  "version": "2.6.2",
+  "version": "2.7.0",
   "description": "Semantic (meaning-based) search over the full text of your Zotero PDFs, with a local MCP endpoint for LLMs.",
   "author": "Gherardo Carullo",
   "homepage_url": "https://github.com/ilDon/zotero-semantic-search",
