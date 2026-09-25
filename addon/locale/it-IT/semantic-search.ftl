@@ -197,3 +197,4 @@ semsearch-new-search = Nuova ricerca
 semsearch-toolbar-button =
     .tooltiptext = Ricerca semantica ({ $shortcut })
     .label = Ricerca semantica
+semsearch-prefs-mcp-writes = Consenti agli assistenti AI di aggiungere metadati alla libreria (creare elementi genitore per i PDF che non ne hanno)

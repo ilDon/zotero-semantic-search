@@ -54,6 +54,7 @@ var SSPassages = {
 			libraryID: parent.libraryID,
 			attachmentID: attachment.id,
 			attachmentKey: attachment.key,
+			hasParent: !!attachment.parentItem,
 			title: parent.getDisplayTitle() || attachment.getField('title'),
 			creators: parent.getField('firstCreator') || '',
 			authors,

@@ -40,6 +40,7 @@ window.SemanticSearchPrefs = {
 			else langs.value = this.pref('ocr.languages');
 		});
 		this._boolPref('semsearch-mcp-enabled', 'mcp.enabled');
+		this._boolPref('semsearch-mcp-writes', 'mcp.allowWrites');
 
 		let cfg = this.S.mcp.clientConfig();
 		this.$('semsearch-mcp-url').value = this.S.mcp.url;
