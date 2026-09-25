@@ -1,4 +1,4 @@
-/* global ChromeUtils, IOUtils, SSF16, SSStore */
+/* global ChromeUtils, IOUtils, SSF16 */
 /* exported SSLegacyEmbeddingStore, SSBlobEmbeddingStore */
 
 /**
@@ -29,8 +29,6 @@ var SSBaseEmbeddingStore = class {
 		if (this._opening) return this._opening;
 		this._opening = (async () => {
 			if (this._conn) await this.close();
-			// Earlier versions' database must be renamed before anything opens it
-			await SSStore.open();
 			const { Sqlite } = ChromeUtils.importESModule('resource://gre/modules/Sqlite.sys.mjs');
 			let path = this.path;
 			let conn = await Sqlite.openConnection({ path });
@@ -78,7 +76,7 @@ var SSBaseEmbeddingStore = class {
 };
 
 /**
- * LEALLA-large: the database of the original Python app, format unchanged.
+ * LEALLA-large: JSON vectors (the format of the first versions of this project).
  *
  *   embeddings(id TEXT, date TEXT, file_name TEXT, section_number INTEGER, embedding TEXT)
  *     id = attachment key (= storage folder name), embedding = JSON array of 256 floats

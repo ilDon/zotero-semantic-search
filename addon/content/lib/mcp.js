@@ -21,19 +21,19 @@
 
 	/**
 	 * Server instructions. `model` describes the active embedding model:
-	 * {label, languages, paragraph, short} (similarity guidance); defaults to
-	 * LEALLA-large, the model of earlier versions.
+	 * {label, languages, paragraph, short} (similarity guidance), and
+	 * approximate: true if some passages have approximate text.
 	 */
 	function instructions(model) {
-		const m = Object.assign({ label: 'LEALLA-large', languages: 109, paragraph: '0.6+', short: '0.45-0.55' }, model || {});
+		const m = Object.assign({ label: 'Multilingual E5 small', languages: 94, paragraph: '0.88+', short: '0.84-0.87' }, model || {});
 		return `This server searches the user's Zotero library by meaning (not keywords).
 Every PDF in the library is split into passages and embedded with ${m.label}, a
 multilingual (${m.languages} languages) sentence encoder; a query is embedded the same way and passages
 are ranked by cosine similarity. Queries work best as a full sentence or short paragraph that
 states the idea you are looking for (e.g. a sentence from the user's draft), in any language.
 Similarity depends on the model and on query length: with paragraph-long queries ${m.paragraph} is a good
-match; with short queries (a phrase or one sentence) ${m.short} is already relevant. Passage text of
-documents indexed by the old version of this tool is located approximately (text_is_approximate).
+match; with short queries (a phrase or one sentence) ${m.short} is already relevant.${m.approximate ? `
+The text of some passages indexed in long sections is located approximately (text_is_approximate).` : ''}
 Use semantic_search first, then get_passage for more context around a hit and get_item for
 bibliographic details. Cite works using the metadata returned by get_item.`;
 	}

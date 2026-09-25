@@ -39,7 +39,6 @@ var SSVectorIndexImpl = class {
 	}
 
 	get cachePath() {
-		// LEALLA keeps the file name of earlier versions
 		let name = this._lealla ? 'vectors.bin' : `vectors-${this.space.id}.bin`;
 		return PathUtils.join(Zotero.Profile.dir, 'semantic-search', name);
 	}
@@ -255,12 +254,6 @@ var SSVectorIndexImpl = class {
 		if (this._dirty) await this.save();
 	}
 
-	/** Before the per-model files, the LEALLA database was file_embeddings.db */
-	_legacyPath() {
-		if (!this._lealla) return null;
-		return PathUtils.join(PathUtils.parent(this.store.path), SSModels.registry.lealla.legacyDbFile);
-	}
-
 	async _readCache() {
 		let path = this.cachePath;
 		if (!(await IOUtils.exists(path))) return false;
@@ -271,7 +264,7 @@ var SSVectorIndexImpl = class {
 		let n = dv.getUint32(8, true);
 		let headerLen = dv.getUint32(12, true);
 		let header = JSON.parse(new TextDecoder().decode(bytes.subarray(16, 16 + headerLen)));
-		if (header.dbPath !== this.store.path && header.dbPath !== this._legacyPath()) return false;
+		if (header.dbPath !== this.store.path) return false;
 		let off = 16 + headerLen;
 		off = (off + 3) & ~3;
 		let need = off + n * (4 * 4 + this.DIM);

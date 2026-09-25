@@ -1,4 +1,4 @@
-/* global Zotero, ChromeUtils, IOUtils, PathUtils, SSModels */
+/* global ChromeUtils, PathUtils, SSModels */
 /* exported SSStore */
 
 /**
@@ -12,18 +12,12 @@
  *          sha256(model + "\n" + query) for the other models
  *   excluded(id TEXT, date TEXT, reason TEXT)
  *   ss_meta(key TEXT PRIMARY KEY, value TEXT)
- *
- * Migration from earlier versions, which kept everything in
- * file_embeddings.db: the file is renamed file_embeddings_lealla.db (it stays
- * the LEALLA passage database, in its original format) and its history,
- * excluded and ss_meta rows are copied here.
  */
 var SSStore = {
 	FILE: 'semantic_search.db',
 	_conn: null,
 	_path: null,
 	_opening: null,
-	migrationNotice: null, // set when a stray legacy database was found
 
 	get path() {
 		return PathUtils.join(SSModels.dataDir, this.FILE);
@@ -35,12 +29,9 @@ var SSStore = {
 		this._opening = (async () => {
 			if (this._conn) await this.close();
 			const { Sqlite } = ChromeUtils.importESModule('resource://gre/modules/Sqlite.sys.mjs');
-			await this.migrateFiles(SSModels.dataDir);
 			let path = this.path;
-			let isNew = !(await IOUtils.exists(path));
 			let conn = await Sqlite.openConnection({ path });
 			await this._createTables(conn);
-			if (isNew) await this._importLegacy(conn);
 			this._conn = conn;
 			this._path = path;
 			return conn;
@@ -68,66 +59,6 @@ var SSStore = {
 		await conn.execute('CREATE TABLE IF NOT EXISTS ss_meta (key TEXT PRIMARY KEY, value TEXT)');
 		await conn.execute('CREATE INDEX IF NOT EXISTS ss_excluded_id ON excluded(id)');
 		await conn.execute('CREATE INDEX IF NOT EXISTS ss_history_id ON history(id)');
-	},
-
-	/**
-	 * Rename file_embeddings.db to file_embeddings_lealla.db (once).
-	 * Not done when a custom database path is set (that path is the LEALLA database).
-	 */
-	async migrateFiles(dir) {
-		if (Zotero.Prefs.get('extensions.semantic-search.dbPath', true)) return;
-		let spec = SSModels.registry.lealla;
-		let legacy = PathUtils.join(dir, spec.legacyDbFile);
-		let target = PathUtils.join(dir, spec.dbFile);
-		if (!(await IOUtils.exists(legacy))) return;
-		if (await IOUtils.exists(target)) {
-			// Probably recreated by an older version of the plugin on another computer
-			// sharing this data directory: leave both alone and tell the user
-			this.migrationNotice = { legacy, target };
-			Zotero.debug(`Semantic Search: both ${legacy} and ${target} exist; using the latter`);
-			return;
-		}
-		// A leftover journal means an interrupted transaction: let SQLite recover it first
-		if (await IOUtils.exists(legacy + '-journal') || await IOUtils.exists(legacy + '-wal')) {
-			const { Sqlite } = ChromeUtils.importESModule('resource://gre/modules/Sqlite.sys.mjs');
-			let c = await Sqlite.openConnection({ path: legacy });
-			await c.execute('SELECT count(*) FROM sqlite_master');
-			await c.close();
-		}
-		await IOUtils.move(legacy, target, { noOverwrite: true });
-		Zotero.debug(`Semantic Search: renamed ${legacy} to ${target}`);
-	},
-
-	/** Copy searches, exclusions and state from the LEALLA database (earlier versions) */
-	async _importLegacy(conn) {
-		let lealla = SSModels.dbPath('lealla');
-		if (!(await IOUtils.exists(lealla))) return;
-		try {
-			await conn.execute('ATTACH DATABASE ? AS legacy', [lealla]);
-			try {
-				let tables = (await conn.execute("SELECT name FROM legacy.sqlite_master WHERE type = 'table'"))
-					.map(r => r.getResultByIndex(0));
-				await conn.executeTransaction(async () => {
-					if (tables.includes('history')) {
-						await conn.execute(`INSERT INTO history (id, date, query, query_embedding, results, model)
-							SELECT id, date, query, query_embedding, results, 'lealla' FROM legacy.history ORDER BY rowid`);
-					}
-					if (tables.includes('excluded')) {
-						await conn.execute('INSERT INTO excluded (id, date, reason) SELECT id, date, reason FROM legacy.excluded ORDER BY rowid');
-					}
-					if (tables.includes('ss_meta')) {
-						await conn.execute('INSERT OR REPLACE INTO ss_meta (key, value) SELECT key, value FROM legacy.ss_meta');
-					}
-				});
-			}
-			finally {
-				await conn.execute('DETACH DATABASE legacy');
-			}
-			Zotero.debug('Semantic Search: imported searches and exclusions from ' + lealla);
-		}
-		catch (e) {
-			Zotero.logError(e);
-		}
 	},
 
 	today() {

@@ -22,7 +22,7 @@ Semantic search compares **meanings**. Every passage of every PDF in your librar
 
 - 🔎 **Search by meaning** across the full text of all your PDFs. Queries can be a phrase, a sentence or a whole paragraph.
 - 🌍 **Multilingual**: 74 to 109 languages depending on the model, including across languages (an English query finds Italian, Spanish or German passages).
-- 🧠 **Choose your model**: Multilingual E5 small (default), Arctic Embed M v2 for the highest accuracy, or LEALLA-large, the model of the original app. Switching re-indexes in the background while you keep searching.
+- 🧠 **Choose your model**: Multilingual E5 small (default), Arctic Embed M v2 for the highest accuracy, or LEALLA-large, the one with the most languages (109). Switching re-indexes in the background while you keep searching.
 - ⚡ **Fast**: searching half a million passages takes about 0.15 s.
 - 📌 **Wired into Zotero**: every result is linked to its Zotero item. Open the PDF at the right page, jump to the item in your library, copy a formatted citation, or save the results as a collection.
 - 🏷️ **Filter by item type and date added**: books, journal articles, theses… in any combination, and only items added to Zotero since a given date. Works on new and saved searches.
@@ -58,11 +58,11 @@ The model turns every passage and every query into a vector. Pick it in *Zotero 
 | --- | --- | --- | --- | --- |
 | **Multilingual E5 small** (default) | ~100 | 0.87 | fastest | 128 MB |
 | **Arctic Embed M v2** | 74 | 0.91 (best, also across languages) | ~3× slower than E5 | 316 MB |
-| **LEALLA-large** | 109 | 0.73 | about as fast as E5 | 595 MB |
+| **LEALLA-large** | 109 (the most) | 0.73 | ~1.4× slower than E5 | 595 MB |
 
 ¹ Mean reciprocal rank when searching a real library of legal and computer-science books and papers (in several languages) for the document an abstract comes from; 1 = always first.
 
-- **E5** is the right choice for most libraries. **Arctic** is the most accurate, especially when your query and your sources are in different languages, if you can wait for a longer first indexing. **LEALLA** is the model of the original app: libraries indexed with it keep working as they are.
+- **E5** is the right choice for most libraries. **Arctic** is the most accurate, especially when your query and your sources are in different languages, if you can wait for a longer first indexing. **LEALLA** covers the most languages (109) and was designed to match sentences with the same meaning across languages, such as a text and its translation: it can help with libraries in many languages.
 - **Switching** downloads the new model and indexes all your PDFs again, in the background. Until that is done, searches keep using the current model; you can also switch right away and search the documents indexed so far. On a large library the first indexing can take many hours (it resumes after a restart).
 - **Every model keeps its own index**, so switching back is instant (only PDFs added meanwhile are indexed). Indexes you no longer need can be deleted in the settings.
 - Saved searches remember the model they were made with. Open one made with another model and click *Search again with …* to run it with the current model: your *Cited* / *Irrelevant* marks are carried over to the passages on the same pages.
@@ -173,9 +173,6 @@ Look at the item pane or at *Excluded documents*. PDFs without text (scans) can 
 
 **What models does it use?**
 [multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small) (Microsoft), [snowflake-arctic-embed-m-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-m-v2.0) (Snowflake, used with 256-dimensional vectors) and [LEALLA-large](https://huggingface.co/setu4993/LEALLA-large) (Google). They run inside Zotero via WebAssembly, with no Python, server or GPU needed.
-
-**I used the original Python version of this project. Do I lose my index?**
-No. The plugin keeps using your index with LEALLA-large, only indexing PDFs added since: `file_embeddings.db` is renamed `file_embeddings_lealla.db` (its content is unchanged) and your saved searches and excluded documents are copied to `semantic_search.db`. You can then switch to a better model whenever you like.
 
 ## For developers
 

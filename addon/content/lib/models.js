@@ -7,9 +7,6 @@
  *
  * Each model has its own passage database next to zotero.sqlite
  * (file_embeddings_<model>.db): vectors of different models cannot be mixed.
- * LEALLA-large is the model of the original app; its database keeps the
- * original format (it is the original file, renamed) and its code path is
- * unchanged.
  *
  * Switching model builds the new index in the background while searches keep
  * using the current one; the new model becomes active when every PDF has been
@@ -52,18 +49,17 @@ var SSModelRegistry = {
 		id: 'lealla',
 		label: 'LEALLA-large',
 		runtime: 'lealla',
-		storage: 'legacy',
+		storage: 'json',
 		dim: 256,
 		languages: 109,
 		dbFile: 'file_embeddings_lealla.db',
-		legacyDbFile: 'file_embeddings.db',
 		minSimilarityPref: 'minSimilarity',
 		// Defaults of the other models match the same percentiles of the scores of
 		// matching / non-matching passages (benchmark on a real library)
 		minSimilarity: 0.6,
 		mcpMinSimilarity: 0.4,
 		// query-length dependent guidance for LLM clients (see mcp.js)
-		guidance: { paragraph: '0.6+', short: '0.45-0.55' },
+		guidance: { paragraph: '0.6+', short: '0.45-0.55', approximate: true },
 		downloadMB: 595,
 		source: 'https://huggingface.co/setu4993/LEALLA-large',
 	},
@@ -157,7 +153,7 @@ var SSSpace = class {
 
 	get store() {
 		if (!this._store) {
-			this._store = this.spec.storage === 'legacy'
+			this._store = this.spec.storage === 'json'
 				? new SSLegacyEmbeddingStore(this)
 				: new SSBlobEmbeddingStore(this);
 		}
@@ -241,7 +237,7 @@ var SSModels = {
 
 	get activeId() {
 		let id = Zotero.Prefs.get(this.PREF, true);
-		return this.registry.get(id) ? id : 'lealla';
+		return this.registry.get(id) ? id : 'e5-small';
 	},
 
 	get active() {
@@ -265,15 +261,9 @@ var SSModels = {
 		return t;
 	},
 
-	/**
-	 * First run: users of the original app or of an earlier version keep
-	 * LEALLA-large; new users start with multilingual-e5-small.
-	 */
+	/** First run: multilingual-e5-small */
 	async init() {
-		if (this.registry.get(Zotero.Prefs.get(this.PREF, true))) return;
-		let hasLealla = await IOUtils.exists(this.dbPath('lealla'))
-			|| await IOUtils.exists(PathUtils.join(this.dataDir, this.registry.lealla.legacyDbFile));
-		Zotero.Prefs.set(this.PREF, hasLealla ? 'lealla' : 'e5-small', true);
+		if (!this.registry.get(Zotero.Prefs.get(this.PREF, true))) Zotero.Prefs.set(this.PREF, 'e5-small', true);
 	},
 
 	/**

@@ -65,7 +65,6 @@ window.SemanticSearchPrefs = {
 				this._error(e);
 			}
 		});
-		this.$('semsearch-upgrade-legacy').addEventListener('click', () => this.upgradeLegacy());
 		this.$('semsearch-rebuild-cache').addEventListener('click', async (e) => {
 			e.target.disabled = true;
 			try {
@@ -145,10 +144,6 @@ window.SemanticSearchPrefs = {
 		this.$('semsearch-build-resume').addEventListener('click', () => {
 			let id = this.S.models.buildingId;
 			if (id) this.S.models.choose(id).catch(e => this._error(e));
-		});
-		this.$('semsearch-migration-show').addEventListener('click', () => {
-			let notice = this.S.store.migrationNotice;
-			if (notice) Zotero.File.reveal(notice.legacy);
 		});
 	},
 
@@ -290,14 +285,6 @@ window.SemanticSearchPrefs = {
 			list.replaceChildren(...rows);
 		}
 
-		let notice = this.S.store.migrationNotice;
-		let box2 = this.$('semsearch-migration-notice');
-		box2.hidden = !notice;
-		if (notice) {
-			document.l10n.setAttributes(this.$('semsearch-migration-text'), 'semsearch-migration-notice',
-				{ legacy: notice.legacy, target: notice.target });
-		}
-		this.$('semsearch-upgrade-legacy').hidden = models.activeId !== 'lealla';
 	},
 
 	async refresh() {
@@ -348,24 +335,6 @@ window.SemanticSearchPrefs = {
 		else {
 			ix.textContent = '';
 			ix.removeAttribute('data-l10n-id');
-		}
-	},
-
-	async upgradeLegacy() {
-		try {
-			let keys = await this.S.store.getLegacyDocumentIDs();
-			let msg = await document.l10n.formatValue('semsearch-prefs-upgrade-legacy-confirm', { count: keys.length });
-			if (!keys.length || !Services.prompt.confirm(window, 'Semantic Search', msg)) return;
-			await this.S.index.load();
-			let items = [];
-			for (let key of keys) {
-				let item = await this.S.passages.getItemByKey(key);
-				if (item && item.isPDFAttachment()) items.push(item);
-			}
-			await this.S.indexer.indexItems(items.reverse(), { force: true });
-		}
-		catch (e) {
-			this._error(e);
 		}
 	},
 };
