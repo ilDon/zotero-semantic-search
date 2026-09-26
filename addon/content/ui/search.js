@@ -37,6 +37,7 @@ var SemanticSearchWindow = {
 	_textBusy: 0,
 	_searchSeq: 0,
 	typeFilter: new Set(), // Zotero item type names; empty = all types
+	SOURCE_PREF: 'extensions.semantic-search.historySource',
 	addedSince: null, // {date: 'YYYY-MM-DD', utc: 'YYYY-MM-DD HH:MM:SS'}: only items added since then
 
 	$(id) {
@@ -91,6 +92,20 @@ var SemanticSearchWindow = {
 		this._renderModelIndicator();
 		this.$('history-filter').addEventListener('input', () => this.renderHistory());
 		this.$('new-search-button').addEventListener('click', () => this.newSearch());
+		// saved searches: all / made in this window / made by AI assistants (MCP)
+		this.$('source-filter-button').addEventListener('click', (e) => {
+			e.stopPropagation();
+			let popup = this.$('source-filter-popup');
+			popup.hidden = !popup.hidden;
+		});
+		this.$('source-filter-popup').addEventListener('click', e => e.stopPropagation());
+		for (let radio of document.querySelectorAll('input[name="source-filter"]')) {
+			radio.addEventListener('change', () => {
+				Zotero.Prefs.set(this.SOURCE_PREF, radio.value, true);
+				this.$('source-filter-popup').hidden = true;
+				this.renderHistory();
+			});
+		}
 		this.$('rerun-button').addEventListener('click', () => {
 			// results of another model: run with the active one, keeping the marks
 			let other = this.current && this.current.model && this.current.model !== this.S.models.activeId;
@@ -125,6 +140,7 @@ var SemanticSearchWindow = {
 		}
 		this.$('date-filter-reset').addEventListener('click', () => this.setAddedSince(null));
 		let closePopups = () => {
+			this.$('source-filter-popup').hidden = true;
 			this.$('type-filter-popup').hidden = true;
 			this.$('date-filter-popup').hidden = true;
 		};
@@ -162,6 +178,8 @@ var SemanticSearchWindow = {
 			if (this.view === 'duplicates' && !this._dupBusy) this._syncDuplicates();
 		}, 1000);
 		this._unsubscribe.push(this.S.duplicates.onChange(refreshDuplicates));
+		// searches saved elsewhere (by AI assistants through MCP) appear right away
+		this._unsubscribe.push(this.S.events.on('history', this._throttle(() => this.loadHistoryList(), 1000)));
 		this._unsubscribe.push(this.S.ocr.onChange(() => {
 			if (this.view === 'excluded') this.showExcluded();
 		}));
@@ -477,8 +495,12 @@ var SemanticSearchWindow = {
 		// the management views (excluded documents, duplicates) have nothing to search
 		this.$('query-form').hidden = this.view === 'excluded' || this.view === 'duplicates';
 		let filter = this.$('history-filter').value.trim().toLowerCase();
+		let source = this.historySource;
+		for (let radio of document.querySelectorAll('input[name="source-filter"]')) radio.checked = radio.value === source;
+		this.$('source-filter-button').classList.toggle('active', source !== 'all');
 		let list = this.$('history-list');
-		let items = this.historyItems.filter(h => !filter || h.query.toLowerCase().includes(filter));
+		let items = this.historyItems.filter(h => (!filter || h.query.toLowerCase().includes(filter))
+			&& (source === 'all' || h.source === source));
 		if (!items.length) {
 			list.replaceChildren(this.el('li', { class: 'history-empty', l10n: ['semsearch-history-empty'] }));
 			return;
@@ -491,6 +513,10 @@ var SemanticSearchWindow = {
 			},
 			this.el('div', { class: 'history-query', text: h.query }),
 			this.el('div', { class: 'history-meta', text: `${this._formatDate(h.date)} · ${h.count}` },
+				this.el('span', {
+					class: 'history-source ' + h.source,
+					l10n: [h.source === 'mcp' ? 'semsearch-source-label-mcp' : 'semsearch-source-label-manual'],
+				}),
 				h.model !== this.S.models.activeId
 					? this.el('span', { class: 'history-model', text: this._modelLabel(h.model), l10n: ['semsearch-history-model', { model: this._modelLabel(h.model) }] })
 					: null),
@@ -505,6 +531,11 @@ var SemanticSearchWindow = {
 			}));
 			return li;
 		}));
+	},
+
+	get historySource() {
+		let v = Zotero.Prefs.get(this.SOURCE_PREF, true);
+		return ['manual', 'mcp'].includes(v) ? v : 'all';
 	},
 
 	_formatDate(d) {

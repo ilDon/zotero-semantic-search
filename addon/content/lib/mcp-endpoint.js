@@ -244,17 +244,17 @@ var SSMcpEndpoint = {
 				minSimilarity: typeof args.min_similarity === 'number' ? args.min_similarity : SSModels.active.spec.mcpMinSimilarity,
 				// Saved UI searches use the stricter UI threshold: only reuse them on request
 				useCache: args.use_cache === true,
-				// Searches made by an LLM do not clutter the user's history
-				save: false,
+				// saved in the history, marked as made by an assistant
+				source: 'mcp',
+				// filter on the item type before taking the top results (and before saving)
+				filter: Array.isArray(args.item_types) && args.item_types.length ? async (list) => {
+					let wanted = new Set(args.item_types.map(String));
+					let described = list.map(r => ({ ...r }));
+					await SSPassages.enrich(described, { text: false });
+					return list.filter((r, i) => wanted.has(described[i].itemType));
+				} : undefined,
 			});
 			let results = res.results;
-			if (Array.isArray(args.item_types) && args.item_types.length) {
-				// filter on the item type before taking the top results
-				let wanted = new Set(args.item_types.map(String));
-				results = results.map(r => ({ ...r }));
-				await SSPassages.enrich(results, { text: false });
-				results = results.filter(r => wanted.has(r.itemType));
-			}
 			let total = results.length;
 			if (args.group_by_item) {
 				results = SSSearch.groupByDocument(results).map(g => g.results[0]);
@@ -442,7 +442,7 @@ var SSMcpEndpoint = {
 			let limit = Math.min(200, Math.max(1, parseInt(args.limit) || 20));
 			let list = await SSStore.listHistory();
 			return {
-				searches: list.slice(0, limit).map(h => ({ query: h.query, date: h.date, results: h.count })),
+				searches: list.slice(0, limit).map(h => ({ query: h.query, date: h.date, results: h.count, source: h.source })),
 			};
 		},
 

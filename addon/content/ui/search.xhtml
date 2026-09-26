@@ -27,7 +27,17 @@
 			<html:div class="sidebar-section sidebar-history">
 				<html:button id="new-search-button" class="new-search" data-l10n-id="semsearch-new-search"/>
 				<html:h2 data-l10n-id="semsearch-history"/>
-				<html:input id="history-filter" type="search" data-l10n-id="semsearch-history-filter"/>
+				<html:div class="history-filter-row">
+					<html:input id="history-filter" type="search" data-l10n-id="semsearch-history-filter"/>
+					<html:div class="type-filter">
+						<html:button id="source-filter-button" class="icon-button" aria-haspopup="true" data-l10n-id="semsearch-source-filter"/>
+						<html:div id="source-filter-popup" class="type-filter-popup source-filter-popup" hidden="true">
+							<html:label><html:input type="radio" name="source-filter" value="all"/><html:span data-l10n-id="semsearch-source-all"/></html:label>
+							<html:label><html:input type="radio" name="source-filter" value="manual"/><html:span data-l10n-id="semsearch-source-manual"/></html:label>
+							<html:label><html:input type="radio" name="source-filter" value="mcp"/><html:span data-l10n-id="semsearch-source-mcp"/></html:label>
+						</html:div>
+					</html:div>
+				</html:div>
 				<html:ul id="history-list" tabindex="0"/>
 			</html:div>
 			<html:div class="sidebar-section sidebar-footer">

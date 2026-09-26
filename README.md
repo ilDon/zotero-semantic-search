@@ -126,7 +126,7 @@ Then just ask, for example:
 | `create_parent_item` | Creates a parent item with the given type, title, creators and fields for such a PDF (like *Create Parent Item* in Zotero) |
 | `create_item` | Creates an item without attachments (e.g. a source to cite); refuses duplicates by DOI/ISBN unless asked |
 
-Searches made through MCP do not end up in your search history. The endpoint only accepts local, non-browser connections and can be turned off in the preferences. `create_parent_item` and `create_item` are the only tools that change your library; they can be disabled separately in the preferences.
+Searches made through MCP are saved in your search history too, labelled *MCP* (the filter button next to the search box of the sidebar shows all searches, only yours or only the assistants'). The endpoint only accepts local, non-browser connections and can be turned off in the preferences. `create_parent_item` and `create_item` are the only tools that change your library; they can be disabled separately in the preferences.
 
 > *"Find the PDFs in my library that have no metadata, read their first pages and create proper parent items for them."*
 

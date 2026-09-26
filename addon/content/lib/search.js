@@ -34,9 +34,10 @@ var SSSearch = {
 		return hex;
 	},
 
-	/** History id of a query run with a model */
-	historyID(query, model) {
-		return model === 'lealla' ? this.hashQuery(query) : this.hashQuery(model + '\n' + query);
+	/** History id of a query run with a model, from the UI or by an AI assistant (MCP) */
+	historyID(query, model, source = 'manual') {
+		let base = model === 'lealla' ? query : model + '\n' + query;
+		return this.hashQuery(source === 'mcp' ? 'mcp\n' + base : base);
 	},
 
 	async ensureReady() {
@@ -58,16 +59,21 @@ var SSSearch = {
 	 * @param {string[]} [opts.keys] - restrict to these attachment keys
 	 * @param {string} [opts.carryFrom] - history id of a run with another model:
 	 *   copy its statuses to passages of the same document and page
+	 * @param {string} [opts.source='manual'] - 'manual' (search window) or 'mcp':
+	 *   kept apart in the history
+	 * @param {Function} [opts.filter] - async (results) => results, applied before saving
 	 * @returns {Promise<{id, query, date, results, fromCache, model}>}
 	 */
 	async search(query, opts = {}) {
 		query = String(query || '');
 		if (!query.trim()) throw new Error('Empty query');
 		let model = SSModels.activeId;
-		let id = this.historyID(query, model);
+		let source = opts.source === 'mcp' ? 'mcp' : 'manual';
+		let id = this.historyID(query, model, source);
 		let useCache = opts.useCache !== false && !opts.keys;
 		if (useCache) {
-			let saved = await SSStore.getHistory(id);
+			// the cache is the user's own searches
+			let saved = await SSStore.getHistory(this.historyID(query, model));
 			if (saved) {
 				return { ...saved, fromCache: true };
 			}
@@ -97,10 +103,13 @@ var SSSearch = {
 		if (opts.carryFrom && opts.carryFrom !== id) {
 			await this._carryStatuses(opts.carryFrom, results);
 		}
-		if (opts.save !== false && !opts.keys) {
-			await SSStore.saveHistory(id, query, this.meanVector(qvecs), results, model);
+		if (opts.filter) results = await opts.filter(results);
+		// A search restricted to some documents is saved only when made by an assistant
+		// (what it was shown); in the window, restrictions are filters on saved results
+		if (opts.save !== false && (!opts.keys || source === 'mcp')) {
+			await SSStore.saveHistory(id, query, this.meanVector(qvecs), results, model, source);
 		}
-		return { id, query, date: SSStore.today(), results, fromCache: false, model };
+		return { id, query, date: SSStore.today(), results, fromCache: false, model, source };
 	},
 
 	/**
