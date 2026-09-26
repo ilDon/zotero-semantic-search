@@ -1,4 +1,4 @@
-/* global ChromeUtils, PathUtils, SSModels */
+/* global ChromeUtils, PathUtils, SSModels, SSEvents */
 /* exported SSStore */
 
 /**
@@ -7,9 +7,10 @@
  * each embedding model live in their own database (see embedding-store.js);
  * the embedding methods below act on the active model's database.
  *
- *   history(id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT, model TEXT)
- *     id = sha256(query) for LEALLA-large (as in the original app),
- *          sha256(model + "\n" + query) for the other models
+ *   history(id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT, model TEXT, source TEXT)
+ *     id = sha256(query) for LEALLA-large, sha256(model + "\n" + query) for the
+ *          other models, prefixed by "mcp\n" for searches made by AI assistants
+ *     source = 'mcp' for searches made by AI assistants, NULL for the user's own
  *   excluded(id TEXT, date TEXT, reason TEXT)
  *   ss_meta(key TEXT PRIMARY KEY, value TEXT)
  */
@@ -57,6 +58,8 @@ var SSStore = {
 		await conn.execute(`CREATE TABLE IF NOT EXISTS history (
 			id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT, model TEXT)`);
 		await conn.execute('CREATE TABLE IF NOT EXISTS ss_meta (key TEXT PRIMARY KEY, value TEXT)');
+		let cols = (await conn.execute('PRAGMA table_info(history)')).map(r => r.getResultByName('name'));
+		if (!cols.includes('source')) await conn.execute('ALTER TABLE history ADD COLUMN source TEXT');
 		await conn.execute('CREATE INDEX IF NOT EXISTS ss_excluded_id ON excluded(id)');
 		await conn.execute('CREATE INDEX IF NOT EXISTS ss_history_id ON history(id)');
 	},
@@ -174,7 +177,7 @@ var SSStore = {
 
 	async listHistory() {
 		let conn = await this.open();
-		let rows = await conn.execute('SELECT id, query, date, results, model FROM history ORDER BY date DESC, rowid DESC');
+		let rows = await conn.execute('SELECT id, query, date, results, model, source FROM history ORDER BY date DESC, rowid DESC');
 		let seen = new Set();
 		let out = [];
 		for (let r of rows) {
@@ -186,7 +189,14 @@ var SSStore = {
 				count = JSON.parse(r.getResultByIndex(3)).length;
 			}
 			catch (e) {}
-			out.push({ id, query: r.getResultByIndex(1), date: r.getResultByIndex(2), count, model: r.getResultByIndex(4) || 'lealla' });
+			out.push({
+				id,
+				query: r.getResultByIndex(1),
+				date: r.getResultByIndex(2),
+				count,
+				model: r.getResultByIndex(4) || 'lealla',
+				source: r.getResultByIndex(5) === 'mcp' ? 'mcp' : 'manual',
+			});
 		}
 		return out;
 	},
@@ -194,7 +204,7 @@ var SSStore = {
 	async getHistory(id) {
 		let conn = await this.open();
 		let rows = await conn.execute(
-			'SELECT id, query, date, results, model FROM history WHERE id = ? ORDER BY rowid DESC LIMIT 1', [id]);
+			'SELECT id, query, date, results, model, source FROM history WHERE id = ? ORDER BY rowid DESC LIMIT 1', [id]);
 		if (!rows.length) return null;
 		let r = rows[0];
 		let results = [];
@@ -208,19 +218,21 @@ var SSStore = {
 			date: r.getResultByIndex(2),
 			results,
 			model: r.getResultByIndex(4) || 'lealla',
+			source: r.getResultByIndex(5) === 'mcp' ? 'mcp' : 'manual',
 		};
 	},
 
-	async saveHistory(id, query, queryEmbedding, results, model) {
+	async saveHistory(id, query, queryEmbedding, results, model, source = 'manual') {
 		let conn = await this.open();
 		let qe = JSON.stringify([Array.from(queryEmbedding, x => Math.fround(x))]);
 		await conn.executeTransaction(async () => {
 			await conn.execute('DELETE FROM history WHERE id = ?', [id]);
 			await conn.execute(
-				'INSERT INTO history (id, date, query, query_embedding, results, model) VALUES (?, ?, ?, ?, ?, ?)',
-				[id, this.today(), query, qe, JSON.stringify(results), model]
+				'INSERT INTO history (id, date, query, query_embedding, results, model, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
+				[id, this.today(), query, qe, JSON.stringify(results), model, source === 'mcp' ? 'mcp' : null]
 			);
 		});
+		SSEvents.emit('history');
 	},
 
 	async updateHistoryResults(id, results) {

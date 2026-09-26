@@ -67,10 +67,59 @@ window {
 	color: var(--ss-muted);
 }
 
-#history-filter {
+.history-filter-row {
+	display: flex;
+	gap: 6px;
+	align-items: center;
 	margin: 0 0 8px;
-	width: 100%;
+}
+
+#history-filter {
+	flex: 1;
+	min-width: 0;
+	margin: 0;
 	box-sizing: border-box;
+}
+
+.icon-button {
+	appearance: none;
+	width: 24px;
+	height: 22px;
+	margin: 0;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: url("chrome://semantic-search/content/icons/filter.svg") center / 14px no-repeat;
+	-moz-context-properties: fill, fill-opacity;
+	fill: var(--fill-secondary, GrayText);
+	cursor: pointer;
+}
+
+.icon-button:hover {
+	border-color: rgba(127, 127, 127, 0.4);
+}
+
+.icon-button.active {
+	fill: var(--ss-accent);
+	border-color: var(--ss-accent);
+}
+
+.source-filter-popup {
+	inset-inline-start: auto;
+	inset-inline-end: 0;
+	min-width: 160px;
+}
+
+.history-source {
+	margin-inline-start: 6px;
+	padding: 0 5px;
+	border-radius: 8px;
+	font-size: 10px;
+	background: rgba(127, 127, 127, 0.15);
+}
+
+.history-source.mcp {
+	background: rgba(120, 80, 220, 0.18);
 }
 
 #history-list {

@@ -242,3 +242,12 @@ semsearch-dup-new-keep = { $count ->
    *[other] Tienili comunque
 }
 semsearch-dup-new-review = Rivedi…
+semsearch-source-filter =
+    .title = Mostra tutte le ricerche, solo le tue o solo quelle fatte dagli assistenti AI (MCP)
+semsearch-source-all = Tutte le ricerche
+semsearch-source-manual = Manuali
+semsearch-source-mcp = MCP (assistenti AI)
+semsearch-source-label-manual = manuale
+    .title = Ricerca fatta in questa finestra
+semsearch-source-label-mcp = MCP
+    .title = Ricerca fatta da un assistente AI tramite MCP
