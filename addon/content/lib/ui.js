@@ -372,7 +372,8 @@ var SSUI = {
 		let exclusion = await SSStore.getExclusion(att.key);
 		let info = exclusion ? null : await SSStore.getDocumentInfo(att.key);
 		if (current) {
-			doc.l10n.setAttributes(status, 'semsearch-pane-indexing', { done: current.done, total: current.total || '?' });
+			if (current.phase === 'text') doc.l10n.setAttributes(status, 'semsearch-pane-reading');
+			else doc.l10n.setAttributes(status, 'semsearch-pane-indexing', { done: current.done, total: current.total || '?' });
 		}
 		else if (queued) {
 			doc.l10n.setAttributes(status, 'semsearch-pane-queued');

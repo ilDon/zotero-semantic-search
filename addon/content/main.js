@@ -1,5 +1,5 @@
 /* global Zotero, Services, ChromeUtils */
-/* global SSModels, SSEvents, SSModelManager, SSStore, SSVectorIndex, SSEmbedder, SSPassages, SSSearch, SSIndexer, SSDuplicates, SSOcr, SSMcpEndpoint, SSUI */
+/* global SSModels, SSEvents, SSModelManager, SSStore, SSVectorIndex, SSEmbedder, SSPassages, SSSearch, SSIndexer, SSDuplicates, SSOcr, SSMcpEndpoint, SSUI, SSTextExtractor */
 var { setTimeout, clearTimeout, setInterval, clearInterval } = ChromeUtils.importESModule(
 	'resource://gre/modules/Timer.sys.mjs'
 );
@@ -13,7 +13,7 @@ var SemanticSearchPlugin = {
 		this.version = version;
 		this.rootURI = rootURI;
 		for (let f of ['mcp', 'models', 'f16', 'model-manager', 'embedding-store', 'store', 'vector-index',
-			'embedder', 'passages', 'search', 'indexer', 'duplicates', 'ocr', 'mcp-endpoint', 'ui']) {
+			'embedder', 'text-extractor', 'passages', 'search', 'indexer', 'duplicates', 'ocr', 'mcp-endpoint', 'ui']) {
 			Services.scriptloader.loadSubScript(rootURI + `content/lib/${f}.js`);
 		}
 
@@ -93,6 +93,7 @@ var SemanticSearchPlugin = {
 			SSDuplicates.unregisterNotifier();
 			SSIndexer.cancel();
 			SSOcr.shutdown();
+			SSTextExtractor.shutdown();
 			SSMcpEndpoint.unregister();
 			await SSModels.shutdown();
 			await SSStore.close();

@@ -1,6 +1,6 @@
 [package]
 name = "semsearch-index"
-version = "2.9.1"
+version = "2.9.2"
 edition = "2021"
 description = "Fast indexing of a Zotero library for the Semantic Search plugin (multilingual-e5-small on the Apple GPU)"
 license = "MIT"

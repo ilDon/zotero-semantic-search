@@ -1,4 +1,4 @@
-/* global Zotero, ChromeWorker, SSActiveProxy, SSModels */
+/* global Zotero, ChromeWorker, SSActiveProxy, SSModels, setTimeout, clearTimeout */
 /* exported SSEmbedderImpl, SSEmbedder */
 
 /**
@@ -12,6 +12,8 @@ var SSEmbedderImpl = class {
 		this.dim = space.spec.dim;
 		this.QUERY_IDLE_MS = 15 * 60 * 1000;
 		this.POOL_IDLE_MS = 60 * 1000;
+		// watchdog: a worker silent for this long is considered stuck and restarted
+		this.STALL_MS = 3 * 60 * 1000;
 		this._query = null;
 		this._pool = [];
 		this._waiters = [];
@@ -32,16 +34,25 @@ var SSEmbedderImpl = class {
 			timer: null,
 		};
 		w.ready = new Promise((resolve, reject) => {
+			w.rejectReady = reject;
 			w.worker.onmessage = (event) => {
 				let m = event.data;
-				if (m.type === 'ready') return resolve();
-				if (m.type === 'init-error') return reject(new Error(m.error));
+				if (m.type === 'ready') {
+					clearTimeout(w.initTimer);
+					return resolve();
+				}
+				if (m.type === 'init-error') {
+					clearTimeout(w.initTimer);
+					return reject(new Error(m.error));
+				}
 				let p = w.pending.get(m.id);
 				if (!p) return;
 				if (m.type === 'progress') {
+					p.arm();
 					if (p.onProgress) p.onProgress(m.done, m.total);
 					return;
 				}
+				clearTimeout(p.timer);
 				w.pending.delete(m.id);
 				if (m.type === 'error') p.reject(new Error(m.error));
 				else p.resolve(m);
@@ -77,24 +88,43 @@ var SSEmbedderImpl = class {
 			});
 		// Don't leave an unhandled rejection if nobody awaits yet
 		w.ready.catch(() => {});
+		w.initTimer = setTimeout(() => {
+			Zotero.logError(new Error('Semantic Search: embedding worker did not start'));
+			this._terminate(w, new Error('The embedding worker did not start'));
+		}, this.STALL_MS);
 		return w;
 	}
 
 	_call(w, message, transfer, onProgress) {
 		let id = this._nextID++;
 		return new Promise((resolve, reject) => {
-			w.pending.set(id, { resolve, reject, onProgress });
+			let p = { resolve, reject, onProgress, timer: null };
+			// restarted on every progress message: only a silent worker trips it
+			p.arm = () => {
+				clearTimeout(p.timer);
+				p.timer = setTimeout(() => {
+					Zotero.logError(new Error(`Semantic Search: embedding worker stopped responding (${message.type})`));
+					this._terminate(w, new Error('The embedding worker stopped responding'));
+				}, this.STALL_MS);
+			};
+			p.arm();
+			w.pending.set(id, p);
 			w.worker.postMessage({ ...message, id }, transfer || []);
 		});
 	}
 
-	_terminate(w) {
+	_terminate(w, error = new Error('Worker terminated')) {
 		if (w.timer) clearTimeout(w.timer);
+		clearTimeout(w.initTimer);
+		if (w.rejectReady) w.rejectReady(error); // no-op once started
 		try {
 			w.worker.terminate();
 		}
 		catch (e) {}
-		for (let p of w.pending.values()) p.reject(new Error('Worker terminated'));
+		for (let p of w.pending.values()) {
+			clearTimeout(p.timer);
+			p.reject(error);
+		}
 		w.pending.clear();
 		w.dead = true;
 	}
@@ -240,7 +270,7 @@ var SSEmbedderImpl = class {
 			return { chunks: m.chunks, vectors: m.vectors };
 		}
 		catch (e) {
-			if (/init|worker error/i.test(e.message)) this._terminate(w);
+			if (/init|worker error|did not start/i.test(e.message)) this._terminate(w);
 			throw e;
 		}
 		finally {

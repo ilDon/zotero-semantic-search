@@ -311,7 +311,9 @@ var SemanticSearchWindow = {
 				parts.push(this.el('div', {
 					class: 'status-line status-current',
 					title: c.title,
-					l10n: ['semsearch-index-current', { title: c.title, done: c.done, total: c.total || '…' }],
+					l10n: c.phase === 'text'
+						? ['semsearch-index-current-text', { title: c.title }]
+						: ['semsearch-index-current', { title: c.title, done: c.done, total: c.total || '…' }],
 				}));
 			}
 			if (ix.state === 'paused') {
