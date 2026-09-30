@@ -55,11 +55,17 @@ pub fn data_dir(given: Option<PathBuf>, profile: Option<&Path>) -> PathBuf {
 }
 
 /// Directory with the model files: given, or the plugin's copy in a Zotero profile
-pub fn model_dir(given: Option<PathBuf>) -> Result<(PathBuf, Option<PathBuf>)> {
+pub fn model_dir(given: Option<PathBuf>, profile: Option<PathBuf>) -> Result<(PathBuf, Option<PathBuf>)> {
     if let Some(d) = given {
-        return Ok((d, None));
+        // …/<profile>/semantic-search/models/e5-small: that profile
+        let from_dir = d.ancestors().nth(3).filter(|p| p.join("prefs.js").exists()).map(|p| p.to_path_buf());
+        return Ok((d.clone(), profile.or(from_dir)));
     }
-    for p in profiles() {
+    let candidates = match profile {
+        Some(p) => vec![p],
+        None => profiles(),
+    };
+    for p in candidates {
         let d = p.join("semantic-search/models").join(MODEL_ID);
         if d.join(WEIGHTS.0).exists() && d.join(TOKENIZER.0).exists() {
             return Ok((d, Some(p)));

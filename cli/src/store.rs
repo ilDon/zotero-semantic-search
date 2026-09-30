@@ -48,9 +48,10 @@ pub fn open_user(path: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
-/// Replace the passages of one document (one transaction)
-pub fn insert_document(conn: &mut Connection, key: &str, file_name: &str, chunks: &[Chunk], vectors: &[Vec<f32>]) -> Result<()> {
+/// Replace the passages of one document (one transaction); returns their rowids
+pub fn insert_document(conn: &mut Connection, key: &str, file_name: &str, chunks: &[Chunk], vectors: &[Vec<f32>]) -> Result<Vec<i64>> {
     let date = today();
+    let mut rowids = Vec::with_capacity(chunks.len());
     let tx = conn.transaction()?;
     tx.execute("DELETE FROM embeddings WHERE id = ?1", params![key])?;
     {
@@ -64,10 +65,11 @@ pub fn insert_document(conn: &mut Connection, key: &str, file_name: &str, chunks
                 blob.extend_from_slice(&f16::from_f32(*x).to_le_bytes());
             }
             stmt.execute(params![key, date, file_name, i as i64, blob, c.text, c.page as i64, c.char_start as i64])?;
+            rowids.push(tx.last_insert_rowid());
         }
     }
     tx.commit()?;
-    Ok(())
+    Ok(rowids)
 }
 
 /// Same reasons as the plugin: no_text, encrypted, unreadable

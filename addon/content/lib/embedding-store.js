@@ -187,7 +187,7 @@ var SSLegacyEmbeddingStore = class extends SSBaseEmbeddingStore {
 		let conn = await this.open();
 		let sql = `SELECT rowid, id, file_name, section_number, embedding, scheme FROM ${this.TABLE}`;
 		let handler = (row) => {
-			let vec = this._parse(row.getResultByIndex(4));
+			let vec = this._readVector(row, 4);
 			if (!vec) return;
 			onRow(row.getResultByIndex(0), row.getResultByIndex(1), row.getResultByIndex(2),
 				row.getResultByIndex(3), vec, row.getResultByIndex(5));
@@ -200,6 +200,28 @@ var SSLegacyEmbeddingStore = class extends SSBaseEmbeddingStore {
 			let part = rowids.slice(i, i + 500);
 			await conn.execute(`${sql} WHERE rowid IN (${part.map(() => '?').join(',')})`, part, handler);
 		}
+	}
+
+	/**
+	 * Stream the embeddings with rowid in [from, to] (one query; the rowids of a
+	 * table are mostly contiguous). onRow as in forEachEmbedding.
+	 */
+	async forEachEmbeddingRange(from, to, onRow) {
+		let conn = await this.open();
+		await conn.execute(
+			`SELECT rowid, id, file_name, section_number, embedding, scheme FROM ${this.TABLE} WHERE rowid >= ? AND rowid <= ?`,
+			[from, to],
+			(row) => {
+				let vec = this._readVector(row, 4);
+				if (!vec) return;
+				onRow(row.getResultByIndex(0), row.getResultByIndex(1), row.getResultByIndex(2),
+					row.getResultByIndex(3), vec, row.getResultByIndex(5));
+			}
+		);
+	}
+
+	_readVector(row, index) {
+		return this._parse(row.getResultByIndex(index));
 	}
 
 	/** @returns {Map<number, Float64Array|Float32Array>} exact vectors for rowids */
@@ -364,6 +386,24 @@ var SSBlobEmbeddingStore = class extends SSLegacyEmbeddingStore {
 	_parse(blob) {
 		if (!blob || !blob.length) return null;
 		return SSF16.decode(blob);
+	}
+
+	/**
+	 * Reading a BLOB as a JS array of numbers is slow; as a string, each UTF-16
+	 * code unit is one little-endian fp16 value, read natively.
+	 */
+	_readVector(row, index) {
+		if (this._blobAsString !== false) {
+			try {
+				let s = row.getBlobAsString(index);
+				this._blobAsString = true;
+				return s ? SSF16.decodeString(s) : null;
+			}
+			catch (e) {
+				this._blobAsString = false;
+			}
+		}
+		return this._parse(row.getResultByIndex(index));
 	}
 
 	_encode(vec) {

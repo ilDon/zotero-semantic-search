@@ -9,7 +9,7 @@
 
 use anyhow::{bail, Result};
 use indicatif::{ProgressBar, ProgressStyle};
-use semsearch_index::{model::E5, pdf, store, text, xlmr::XlmrTokenizer, zotero};
+use semsearch_index::{cache, model::E5, pdf, store, text, xlmr::XlmrTokenizer, zotero};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -28,6 +28,7 @@ Options:
   --timeout S         give up on a PDF after S seconds (default 300)
   --model-dir DIR     folder with e5-small-int8.ssew and xlmr-tokenizer.json
                       (default: the copy downloaded by the plugin in the Zotero profile)
+  --profile DIR       Zotero profile folder (default: the one with the plugin's model files)
   --base-dir DIR      base directory of linked files (\"attachments:\" paths)
   --dry-run           only show what would be indexed (writes nothing)
   --version           print the version
@@ -40,12 +41,13 @@ struct Args {
     limit: Option<usize>,
     timeout: u64,
     model_dir: Option<PathBuf>,
+    profile: Option<PathBuf>,
     base_dir: Option<PathBuf>,
     dry_run: bool,
 }
 
 fn parse_args() -> Result<Args> {
-    let mut a = Args { data_dir: None, workers: None, limit: None, timeout: 300, model_dir: None, base_dir: None, dry_run: false };
+    let mut a = Args { data_dir: None, workers: None, limit: None, timeout: 300, model_dir: None, profile: None, base_dir: None, dry_run: false };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         let mut value = |name: &str| it.next().ok_or_else(|| anyhow::anyhow!("{name} needs a value"));
@@ -63,6 +65,7 @@ fn parse_args() -> Result<Args> {
             "--limit" => a.limit = Some(value("--limit")?.parse()?),
             "--timeout" => a.timeout = value("--timeout")?.parse()?,
             "--model-dir" => a.model_dir = Some(value("--model-dir")?.into()),
+            "--profile" => a.profile = Some(value("--profile")?.into()),
             "--base-dir" => a.base_dir = Some(value("--base-dir")?.into()),
             s if s.starts_with('-') => bail!("unknown option {s}\n\n{USAGE}"),
             s => a.data_dir = Some(PathBuf::from(s)),
@@ -102,7 +105,14 @@ struct Stats {
 
 /// Embed the passages of several documents together (GPU batches of similar
 /// lengths), then write each document
-fn flush(docs: &mut Vec<Doc>, model: &E5, conn: &mut rusqlite::Connection, stats: &mut Stats, bar: &ProgressBar) -> Result<()> {
+fn flush(
+    docs: &mut Vec<Doc>,
+    model: &E5,
+    conn: &mut rusqlite::Connection,
+    stats: &mut Stats,
+    bar: &ProgressBar,
+    added: &mut cache::NewEntries,
+) -> Result<()> {
     const TOKEN_BUDGET: usize = 16384;
     let mut all: Vec<(usize, usize, usize)> = Vec::new(); // (len, doc, chunk)
     for (d, doc) in docs.iter().enumerate() {
@@ -129,7 +139,10 @@ fn flush(docs: &mut Vec<Doc>, model: &E5, conn: &mut rusqlite::Connection, stats
         i = j;
     }
     for (doc, vecs) in docs.iter().zip(vectors) {
-        store::insert_document(conn, &doc.key, &doc.file_name, &doc.chunks, &vecs)?;
+        let rowids = store::insert_document(conn, &doc.key, &doc.file_name, &doc.chunks, &vecs)?;
+        // the cache holds what the plugin would read back from the database (fp16)
+        let stored: Vec<Vec<f32>> = vecs.iter().map(|v| v.iter().map(|x| half::f16::from_f32(*x).to_f32()).collect()).collect();
+        added.add_document(&doc.key, &doc.file_name, &rowids, &stored);
         stats.indexed += 1;
         stats.passages += doc.chunks.len();
         bar.inc(1);
@@ -140,8 +153,7 @@ fn flush(docs: &mut Vec<Doc>, model: &E5, conn: &mut rusqlite::Connection, stats
 
 fn run() -> Result<()> {
     let args = parse_args()?;
-    let (model_dir, profile) = zotero::model_dir(args.model_dir.clone())?;
-    let profile = profile.or_else(|| zotero::profiles().into_iter().next());
+    let (model_dir, profile) = zotero::model_dir(args.model_dir.clone(), args.profile.clone())?;
     let data_dir = zotero::data_dir(args.data_dir.clone(), profile.as_deref());
     let base_dir = args.base_dir.clone().or_else(|| {
         profile.as_deref().and_then(|p| zotero::pref(p, "extensions.zotero.baseAttachmentPath")).map(PathBuf::from)
@@ -216,6 +228,7 @@ fn run() -> Result<()> {
     let paths = todo.iter().map(|p| p.path.clone()).collect();
     let rx = pdf::extract_all(paths, workers, Duration::from_secs(args.timeout), stop.clone());
     let mut stats = Stats::default();
+    let mut added = cache::NewEntries::new(zotero::DIM);
     let mut pending: Vec<Doc> = Vec::new();
     let mut pending_passages = 0usize;
     for (i, result) in rx.iter() {
@@ -257,7 +270,7 @@ fn run() -> Result<()> {
             }
         }
         if pending_passages >= 2048 {
-            flush(&mut pending, &model, &mut emb, &mut stats, &bar)?;
+            flush(&mut pending, &model, &mut emb, &mut stats, &bar, &mut added)?;
             pending_passages = 0;
         }
         let secs = started.elapsed().as_secs_f64().max(1.0);
@@ -266,8 +279,19 @@ fn run() -> Result<()> {
             break;
         }
     }
-    flush(&mut pending, &model, &mut emb, &mut stats, &bar)?;
+    flush(&mut pending, &model, &mut emb, &mut stats, &bar, &mut added)?;
     bar.finish_and_clear();
+    drop(emb);
+    // Zotero then finds the new passages already in its index cache
+    let mut cache_note = None;
+    if let (Some(p), false) = (&profile, added.is_empty()) {
+        let cache_path = p.join("semantic-search").join(format!("vectors-{}.bin", zotero::MODEL_ID));
+        cache_note = match cache::append(&cache_path, &emb_path, &added) {
+            Ok(true) => Some("Zotero's index cache updated: Zotero starts with the new passages already loaded.".to_string()),
+            Ok(false) => None,
+            Err(e) => Some(format!("Could not update Zotero's index cache ({e:#}): Zotero reads the new passages at startup.")),
+        };
+    }
 
     let secs = started.elapsed().as_secs_f64();
     let took = if secs < 120.0 { format!("{secs:.0} s") } else { format!("{:.0} min", secs / 60.0) };
@@ -289,6 +313,9 @@ fn run() -> Result<()> {
         for f in stats.skipped_files.iter().take(5) {
             println!("  {f}");
         }
+    }
+    if let Some(note) = cache_note {
+        println!("{note}");
     }
     println!("Open Zotero: the new passages are picked up automatically.");
     Ok(())

@@ -144,7 +144,7 @@ Indexing a large library inside Zotero can take days. On a Mac with Apple silico
    ./semsearch-index-*-macos-arm64/semsearch-index
    ```
 
-It shows how many PDFs are done and left, the speed and the time remaining. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop at any time: finished PDFs are kept and the next run continues from there. Passages and vectors are written exactly as the plugin writes them (same model file, same passages), so when you open Zotero again they are picked up automatically. `--dry-run` shows what would be indexed, `--help` the other options.
+It shows how many PDFs are done and left, the speed and the time remaining. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop at any time: finished PDFs are kept and the next run continues from there. Passages and vectors are written exactly as the plugin writes them (same model file, same passages), and added to Zotero's index cache, so when you open Zotero again they are already loaded. `--dry-run` shows what would be indexed, `--help` the other options.
 
 ## Duplicate PDFs
 
