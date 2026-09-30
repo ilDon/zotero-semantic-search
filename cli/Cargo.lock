@@ -1449,7 +1449,7 @@ dependencies = [
 
 [[package]]
 name = "semsearch-index"
-version = "2.9.1"
+version = "2.9.2"
 dependencies = [
  "anyhow",
  "base64",

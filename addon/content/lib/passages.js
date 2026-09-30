@@ -1,4 +1,4 @@
-/* global Zotero, IOUtils, PathUtils, SSModels */
+/* global Zotero, IOUtils, PathUtils, SSModels, SSTextExtractor */
 /* exported SSPassages */
 
 /**
@@ -172,8 +172,8 @@ var SSPassages = {
 			Zotero.debug('Semantic Search: fulltext cache not usable: ' + e);
 		}
 		if (opts.fast) return null;
-		// isPriority: user-facing requests jump ahead of background indexing
-		let res = await Zotero.PDFWorker.getFullText(item.id, null, true);
+		// the plugin's own extractor: never stuck behind Zotero's PDF queue
+		let res = await SSTextExtractor.getFullText(item);
 		let raw = res && res.text ? res.text : '';
 		try {
 			await IOUtils.makeDirectory(this.textCacheDir, { createAncestors: true, ignoreExisting: true });

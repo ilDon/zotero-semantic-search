@@ -1,4 +1,4 @@
-/* global Zotero, PathUtils, IOUtils, SSStore, SSEmbedder, SSModels, SSPassages, SSEvents */
+/* global Zotero, PathUtils, IOUtils, SSStore, SSEmbedder, SSModels, SSPassages, SSEvents, SSTextExtractor */
 /* exported SSIndexer */
 
 /**
@@ -39,7 +39,7 @@ var SSIndexer = {
 		return {
 			state: this.state,
 			queued: this.queue.length,
-			current: [...this.current.entries()].map(([key, c]) => ({ key, title: c.title, done: c.done, total: c.total, model: c.model })),
+			current: [...this.current.entries()].map(([key, c]) => ({ key, title: c.title, phase: c.phase, done: c.done, total: c.total, model: c.model })),
 			stats: { ...this.stats },
 			build: this.build ? { ...this.build } : null,
 			lastError: this.lastError,
@@ -248,14 +248,14 @@ var SSIndexer = {
 		}
 	},
 
-	/** Text of a PDF, pages separated: our text cache first, else Zotero's PDF worker */
+	/** Text of a PDF, pages separated: our text cache first, else the text extractor (with a timeout) */
 	async _pages(item) {
 		let cachePath = PathUtils.join(SSPassages.textCacheDir, item.key + '.txt');
 		try {
 			if (await IOUtils.exists(cachePath)) return (await IOUtils.readUTF8(cachePath)).split('\f');
 		}
 		catch (e) {}
-		let res = await Zotero.PDFWorker.getFullText(item.id, null);
+		let res = await SSTextExtractor.getFullText(item);
 		return (res && res.text ? res.text : '').split('\f');
 	},
 
@@ -283,7 +283,7 @@ var SSIndexer = {
 		}
 		let title = (item.parentItem || item).getDisplayTitle();
 		let control = {};
-		let entry = { title, done: 0, total: 0, control, model: spaces[0].id };
+		let entry = { title, phase: 'text', done: 0, total: 0, control, model: spaces[0].id };
 		this.current.set(item.key, entry);
 		this._emit();
 		try {
@@ -292,6 +292,8 @@ var SSIndexer = {
 				pages = await this._pages(item);
 			}
 			catch (e) {
+				// too slow or the extractor crashed: a failure for now, retried later (not excluded)
+				if (e.name === 'TimeoutError' || /crashed|Shutting down/.test(e.message)) throw e;
 				let reason = /password/i.test(e.name + ' ' + e.message) ? 'encrypted' : 'unreadable';
 				await this._exclude(item.key, reason);
 				return;
@@ -305,8 +307,10 @@ var SSIndexer = {
 				// the model may have been dropped meanwhile (build cancelled)
 				if (!SSModels.targets().includes(space)) continue;
 				entry.model = space.id;
+				entry.phase = 'embedding';
 				entry.done = 0;
 				entry.total = 0;
+				this._emit();
 				let { chunks, vectors } = await space.embedder.embedDocument(pages, (done, total) => {
 					entry.done = done;
 					entry.total = total;
