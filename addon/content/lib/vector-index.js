@@ -16,6 +16,8 @@ var SSVectorIndexImpl = class {
 		this.space = space;
 		this.DIM = space.spec.dim;
 		this.CACHE_VERSION = 1;
+		this.LOAD_PAGE = 20000; // rows per query when loading from the database
+		this.LOAD_SAVE_MS = 5 * 60 * 1000; // save the cache this often during a long load
 		this._lealla = space.spec.runtime === 'lealla';
 		this._inst = null;
 		this._w = null;
@@ -31,6 +33,7 @@ var SSVectorIndexImpl = class {
 		this._loading = null;
 		this._dirty = false;
 		this._saveTimer = null;
+		this._stopping = false;
 		this.progress = null; // {phase, done, total}
 	}
 
@@ -176,8 +179,9 @@ var SSVectorIndexImpl = class {
 		if (this.loaded) return Promise.resolve();
 		if (!this._loading) {
 			this._loading = this._load()
-				.then(() => {
-					this.loaded = true;
+				.then((complete) => {
+					// an interrupted load (Zotero closing) leaves the index unloaded
+					if (complete) this.loaded = true;
 				})
 				.finally(() => {
 					this._loading = null;
@@ -227,31 +231,56 @@ var SSVectorIndexImpl = class {
 		else {
 			missing = null; // everything
 		}
-		let total = missing ? missing.length : dbRowids.length;
+		let toLoad = (missing || dbRowids).slice().sort((a, b) => a - b);
+		let total = toLoad.length;
 		if (total) {
 			await this._ensureCapacity(total);
 			this.progress = { phase: missing ? 'update' : 'build', done: 0, total };
 			this._emit();
 			let done = 0;
 			let lastEmit = 0;
-			await this.store.forEachEmbedding((rowid, id, fileName, section, vec) => {
-				if (vec.length !== this.DIM) return;
-				if (this.n >= this._cap) return; // DB grew while loading; picked up next time
-				this._push(rowid, id, fileName, section, vec);
-				done++;
-				let now = Date.now();
-				if (now - lastEmit > 250) {
-					lastEmit = now;
-					this.progress.done = done;
-					this._emit();
+			let lastSave = Date.now();
+			// rows already in the cache can fall inside a range: skip them
+			let wanted = missing ? new Set(missing) : null;
+			// Read in blocks of rowids: between blocks the load can stop (Zotero
+			// closing) and progress is saved, so a long load is never lost or blocking
+			for (let p = 0; p < total; p += this.LOAD_PAGE) {
+				if (this._stopping) {
+					await this.save();
+					return false;
 				}
-			}, missing || undefined);
-			this._dirty = true;
+				let page = toLoad.slice(p, p + this.LOAD_PAGE);
+				await this.store.forEachEmbeddingRange(page[0], page[page.length - 1], (rowid, id, fileName, section, vec) => {
+					if (wanted && !wanted.has(rowid)) return;
+					if (vec.length !== this.DIM) return;
+					if (this.n >= this._cap) return; // DB grew while loading; picked up next time
+					this._push(rowid, id, fileName, section, vec);
+					done++;
+					let now = Date.now();
+					if (now - lastEmit > 250) {
+						lastEmit = now;
+						this.progress.done = done;
+						this._emit();
+					}
+				});
+				this._dirty = true;
+				if (Date.now() - lastSave > this.LOAD_SAVE_MS) {
+					await this.save();
+					lastSave = Date.now();
+				}
+			}
 		}
 		else if (!this._inst) {
 			await this._allocate(1024);
 		}
 		if (this._dirty) await this.save();
+		return true;
+	}
+
+	/** Stop a load in progress (it saves what it has read) and wait for it */
+	async stop() {
+		this._stopping = true;
+		if (this._loading) await this._loading.catch(() => {});
 	}
 
 	async _readCache() {
@@ -374,6 +403,7 @@ var SSVectorIndexImpl = class {
 	unload() {
 		this._reset();
 		this.loaded = false;
+		this._stopping = false;
 	}
 
 	/** Drop the cache file and rebuild from the database */

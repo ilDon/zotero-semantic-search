@@ -17,3 +17,10 @@ test('fp16 packing round-trips with relative error < 5e-4', () => {
 	// mozStorage returns BLOBs as plain arrays of octets
 	assert.deepStrictEqual(Array.from(F.decode(Array.from(F.encode([1, -2, 0.5, 0])))), [1, -2, 0.5, 0]);
 });
+
+test('fp16 values read from a BLOB as a UTF-16 string decode like the bytes', () => {
+	const bytes = F.encode([0.5, -0.25, 1e-3, 0]);
+	const u16 = new Uint16Array(bytes.buffer);
+	const s = String.fromCharCode(...u16);
+	assert.deepStrictEqual(Array.from(F.decodeString(s)), Array.from(F.decode(bytes)));
+});

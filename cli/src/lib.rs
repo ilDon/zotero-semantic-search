@@ -3,6 +3,7 @@
 
 pub mod text;
 pub mod xlmr;
+pub mod cache;
 pub mod model;
 pub mod pdf;
 pub mod store;

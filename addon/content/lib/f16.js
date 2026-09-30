@@ -71,5 +71,13 @@
 		return out;
 	}
 
-	return { encode, decode, toHalf, fromHalf };
+	/** fp16 values as the code units of a string (a BLOB read as UTF-16) */
+	function decodeString(s) {
+		if (!table) decode([]);
+		const out = new Float32Array(s.length);
+		for (let i = 0; i < s.length; i++) out[i] = table[s.charCodeAt(i)];
+		return out;
+	}
+
+	return { encode, decode, decodeString, toHalf, fromHalf };
 }));

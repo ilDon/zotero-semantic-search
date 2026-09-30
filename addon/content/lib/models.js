@@ -188,6 +188,8 @@ var SSSpace = class {
 		if (this._embedder) this._embedder.shutdown();
 		if (this._index) {
 			try {
+				// a load in progress stops at the next block (and saves what it read)
+				await this._index.stop();
 				await this._index.flush();
 			}
 			catch (e) {
