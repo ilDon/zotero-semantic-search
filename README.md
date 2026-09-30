@@ -130,6 +130,22 @@ Searches made through MCP are saved in your search history too, labelled *MCP* (
 
 > *"Find the PDFs in my library that have no metadata, read their first pages and create proper parent items for them."*
 
+## Fast indexing from the terminal (macOS)
+
+Indexing a large library inside Zotero can take days. On a Mac with Apple silicon, `semsearch-index` does the same job on the GPU, roughly 15 times faster (about 300 passages per second on an M4 Pro: a few hours for 10,000 PDFs). It is meant for users at ease with the terminal, and only for **Multilingual E5 small**.
+
+1. In Zotero, choose *Multilingual E5 small* in *Settings → Semantic Search* (this downloads the model the indexer uses), then **quit Zotero**.
+2. Download `semsearch-index-<version>-macos-arm64.zip` from the [latest release](https://github.com/ilDon/zotero-semantic-search/releases/latest), unzip it and allow it to run (it is not signed):
+   ```bash
+   xattr -dr com.apple.quarantine semsearch-index-*-macos-arm64
+   ```
+3. Run it (it finds your Zotero data folder by itself; pass a path to use another one):
+   ```bash
+   ./semsearch-index-*-macos-arm64/semsearch-index
+   ```
+
+It shows how many PDFs are done and left, the speed and the time remaining. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop at any time: finished PDFs are kept and the next run continues from there. Passages and vectors are written exactly as the plugin writes them (same model file, same passages), so when you open Zotero again they are picked up automatically. `--dry-run` shows what would be indexed, `--help` the other options.
+
 ## Duplicate PDFs
 
 Every PDF is fingerprinted (SHA-256 of its content) in the background. When identical files are found, *n duplicate PDFs* appears at the bottom of the sidebar of the search window. For each group you see which copy has a parent item with metadata, notes, annotations and collections, and you can:

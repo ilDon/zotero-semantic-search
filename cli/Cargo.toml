@@ -1,0 +1,35 @@
+[package]
+name = "semsearch-index"
+version = "2.9.0"
+edition = "2021"
+description = "Fast indexing of a Zotero library for the Semantic Search plugin (multilingual-e5-small on the Apple GPU)"
+license = "MIT"
+publish = false
+
+[dependencies]
+candle-core = { version = "0.9", features = ["metal"] }
+candle-nn = { version = "0.9", features = ["metal"] }
+anyhow = "1"
+half = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+sha2 = "0.10"
+rusqlite = { version = "0.37", features = ["bundled"] }
+pdfium-render = { version = "0.8", default-features = false, features = ["pdfium_latest", "thread_safe"] }
+regex = "1"
+unicode-script = "0.5"
+unicode-segmentation = "1"
+unicode-general-category = "1"
+indicatif = "0.18"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+ctrlc = "3"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+
+[[bin]]
+name = "semsearch-index"
+path = "src/main.rs"

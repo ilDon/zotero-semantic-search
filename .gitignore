@@ -7,3 +7,5 @@ build/
 __pycache__/
 .models/
 wasm-encoder/target/
+cli/.pdfium/
+cli/target/
