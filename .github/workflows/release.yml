@@ -3,16 +3,24 @@ name: Release
 # Push a tag like v2.2.0 on a commit of master: the plugin is built with that
 # version and published as a GitHub release, together with the updates.json that
 # installed copies of the plugin check for automatic updates.
+# Run by hand with a tag, it only builds the command-line indexer again and
+# attaches it to that existing release.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag (vX.Y.Z) to attach the macOS indexer to'
+        required: true
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,12 +71,18 @@ jobs:
   # Command-line indexer for macOS (Apple silicon), attached to the same release
   cli-macos:
     needs: release
-    runs-on: macos-14
+    # also when run by hand, without the release job
+    if: ${{ !cancelled() && (needs.release.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    # macos-latest is Apple silicon; pinned versions are retired after a while
+    runs-on: macos-latest
     env:
+      TAG: ${{ inputs.tag || github.ref_name }}
       PDFIUM_TAG: chromium/8076
       PDFIUM_SHA256: 0d6781fe08906baff3d82c90953e519fbc4eb253fe76431e5ed53b157763b97c
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Download pdfium
         run: |
@@ -79,7 +93,7 @@ jobs:
       - name: Build and test
         working-directory: cli
         run: |
-          export SEMSEARCH_VERSION="${GITHUB_REF_NAME#v}"
+          export SEMSEARCH_VERSION="${TAG#v}"
           cargo test --release
           cargo build --release
 
@@ -87,7 +101,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG#v}"
           DIR="semsearch-index-$VERSION-macos-arm64"
           mkdir "$DIR"
           cp cli/target/release/semsearch-index "$DIR/"
@@ -95,4 +109,4 @@ jobs:
           cp cli/.pdfium/LICENSE "$DIR/PDFIUM-LICENSE"
           cp cli/README.txt "$DIR/README.txt"
           zip -r -q "$DIR.zip" "$DIR"
-          gh release upload "$GITHUB_REF_NAME" "$DIR.zip"
+          gh release upload "$TAG" "$DIR.zip" --clobber
