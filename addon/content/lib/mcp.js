@@ -63,7 +63,7 @@ bibliographic details. Cite works using the metadata returned by get_item.`;
 						items: { type: 'string' },
 						description: 'Only return passages from items of these Zotero item types, e.g. ["book", "journalArticle", "bookSection", "case", "statute", "thesis", "report", "conferencePaper", "document"]. Each result reports its item_type.',
 					},
-					use_cache: { type: 'boolean', default: false, description: 'Return the results saved in the user\'s search history if this exact query was searched before in Zotero.' },
+					use_cache: { type: 'boolean', default: false, description: 'Return the results saved in the user\'s search history if this exact query was searched before in Zotero, with the same min_similarity, and no PDF has been indexed or removed since.' },
 				},
 				required: ['query'],
 			},

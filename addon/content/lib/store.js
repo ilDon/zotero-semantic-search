@@ -7,10 +7,13 @@
  * each embedding model live in their own database (see embedding-store.js);
  * the embedding methods below act on the active model's database.
  *
- *   history(id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT, model TEXT, source TEXT)
+ *   history(id TEXT, date TEXT, query TEXT, query_embedding TEXT, results TEXT, model TEXT, source TEXT,
+ *           index_state TEXT, min_similarity REAL)
  *     id = sha256(query) for LEALLA-large, sha256(model + "\n" + query) for the
  *          other models, prefixed by "mcp\n" for searches made by AI assistants
  *     source = 'mcp' for searches made by AI assistants, NULL for the user's own
+ *     index_state, min_similarity = state of the index and threshold of the run:
+ *          the results are reused only while both are unchanged (NULL on older rows)
  *   excluded(id TEXT, date TEXT, reason TEXT)
  *   ss_meta(key TEXT PRIMARY KEY, value TEXT)
  */
@@ -60,6 +63,8 @@ var SSStore = {
 		await conn.execute('CREATE TABLE IF NOT EXISTS ss_meta (key TEXT PRIMARY KEY, value TEXT)');
 		let cols = (await conn.execute('PRAGMA table_info(history)')).map(r => r.getResultByName('name'));
 		if (!cols.includes('source')) await conn.execute('ALTER TABLE history ADD COLUMN source TEXT');
+		if (!cols.includes('index_state')) await conn.execute('ALTER TABLE history ADD COLUMN index_state TEXT');
+		if (!cols.includes('min_similarity')) await conn.execute('ALTER TABLE history ADD COLUMN min_similarity REAL');
 		await conn.execute('CREATE INDEX IF NOT EXISTS ss_excluded_id ON excluded(id)');
 		await conn.execute('CREATE INDEX IF NOT EXISTS ss_history_id ON history(id)');
 	},
@@ -204,7 +209,7 @@ var SSStore = {
 	async getHistory(id) {
 		let conn = await this.open();
 		let rows = await conn.execute(
-			'SELECT id, query, date, results, model, source FROM history WHERE id = ? ORDER BY rowid DESC LIMIT 1', [id]);
+			'SELECT id, query, date, results, model, source, index_state, min_similarity FROM history WHERE id = ? ORDER BY rowid DESC LIMIT 1', [id]);
 		if (!rows.length) return null;
 		let r = rows[0];
 		let results = [];
@@ -219,17 +224,25 @@ var SSStore = {
 			results,
 			model: r.getResultByIndex(4) || 'lealla',
 			source: r.getResultByIndex(5) === 'mcp' ? 'mcp' : 'manual',
+			indexState: r.getResultByIndex(6),
+			minSimilarity: r.getResultByIndex(7),
 		};
 	},
 
-	async saveHistory(id, query, queryEmbedding, results, model, source = 'manual') {
+	/**
+	 * @param {Object} [run] - {indexState, minSimilarity} of the run, to know later
+	 *   whether the results can be reused
+	 */
+	async saveHistory(id, query, queryEmbedding, results, model, source = 'manual', run = {}) {
 		let conn = await this.open();
 		let qe = JSON.stringify([Array.from(queryEmbedding, x => Math.fround(x))]);
 		await conn.executeTransaction(async () => {
 			await conn.execute('DELETE FROM history WHERE id = ?', [id]);
 			await conn.execute(
-				'INSERT INTO history (id, date, query, query_embedding, results, model, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
-				[id, this.today(), query, qe, JSON.stringify(results), model, source === 'mcp' ? 'mcp' : null]
+				'INSERT INTO history (id, date, query, query_embedding, results, model, source, index_state, min_similarity)'
+					+ ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+				[id, this.today(), query, qe, JSON.stringify(results), model, source === 'mcp' ? 'mcp' : null,
+					run.indexState ?? null, Number.isFinite(run.minSimilarity) ? run.minSimilarity : null]
 			);
 		});
 		SSEvents.emit('history');
