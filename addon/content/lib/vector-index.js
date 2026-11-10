@@ -453,6 +453,19 @@ var SSVectorIndexImpl = class {
 		return n;
 	}
 
+	/**
+	 * Short fingerprint of the passages in the index (count and highest rowid).
+	 * It changes when a document is indexed or removed, also by the CLI indexer,
+	 * so a saved search knows whether it can still be reused.
+	 */
+	stateKey() {
+		let max = 0;
+		for (let i = 0; i < this.n; i++) {
+			if (this.docIdx[i] >= 0 && this.rowids[i] > max) max = this.rowids[i];
+		}
+		return `${this.liveCount}:${max}`;
+	}
+
 	// ---------------------------------------------------------------- search
 
 	/**

@@ -54,7 +54,8 @@ var SSSearch = {
 	 * @param {Object} [opts]
 	 * @param {number} [opts.minSimilarity]
 	 * @param {number} [opts.limit]
-	 * @param {boolean} [opts.useCache=true] - return saved results for an identical query
+	 * @param {boolean} [opts.useCache=true] - return saved results for an identical query,
+	 *   if the index and the threshold have not changed since (see canReuse)
 	 * @param {boolean} [opts.save=true] - store in the history
 	 * @param {string[]} [opts.keys] - restrict to these attachment keys
 	 * @param {string} [opts.carryFrom] - history id of a run with another model:
@@ -71,15 +72,21 @@ var SSSearch = {
 		let source = opts.source === 'mcp' ? 'mcp' : 'manual';
 		let id = this.historyID(query, model, source);
 		let useCache = opts.useCache !== false && !opts.keys;
-		if (useCache) {
-			// the cache is the user's own searches
-			let saved = await SSStore.getHistory(this.historyID(query, model));
-			if (saved) {
-				return { ...saved, fromCache: true };
-			}
-		}
-		await this.ensureReady();
 		let minSim = opts.minSimilarity !== undefined ? opts.minSimilarity : this.minSimilarity;
+		// the cache is the user's own searches
+		let saved = useCache ? await SSStore.getHistory(this.historyID(query, model)) : null;
+		try {
+			await this.ensureReady();
+		}
+		catch (e) {
+			// nothing can be searched without the model: saved results are better than nothing
+			if (saved && saved.results.length && e.code === 'MODEL_MISSING') return { ...saved, fromCache: true };
+			throw e;
+		}
+		let indexState = SSVectorIndex.stateKey();
+		if (saved && this.canReuse(saved, indexState, minSim)) {
+			return { ...saved, fromCache: true };
+		}
 		let limit = opts.limit || this.maxResults;
 		let { vectors: qvecs, segments } = await SSEmbedder.embedQuery(query);
 		let results = await this.rank(qvecs, minSim, limit, opts.keys ? new Set(opts.keys) : null);
@@ -92,7 +99,7 @@ var SSSearch = {
 			}
 		}
 		// Keep the statuses the user already set on a previous run of this query
-		let previous = opts.useCache === false ? await SSStore.getHistory(id) : null;
+		let previous = saved && saved.id === id ? saved : await SSStore.getHistory(id);
 		if (previous) {
 			let status = new Map(previous.results.map(r => [r.folder_id + '/' + r.section_number, r.status]));
 			for (let r of results) {
@@ -107,9 +114,22 @@ var SSSearch = {
 		// A search restricted to some documents is saved only when made by an assistant
 		// (what it was shown); in the window, restrictions are filters on saved results
 		if (opts.save !== false && (!opts.keys || source === 'mcp')) {
-			await SSStore.saveHistory(id, query, this.meanVector(qvecs), results, model, source);
+			await SSStore.saveHistory(id, query, this.meanVector(qvecs), results, model, source,
+				{ indexState, minSimilarity: minSim });
 		}
 		return { id, query, date: SSStore.today(), results, fromCache: false, model, source };
+	},
+
+	/**
+	 * Saved results are reused only if a new run would give the same list: same
+	 * passages in the index and same threshold. Empty lists are never reused:
+	 * they are cheap to recompute and usually date from before the PDFs were indexed.
+	 * Searches saved before the index state was recorded are run again.
+	 */
+	canReuse(saved, indexState, minSim) {
+		return saved.results.length > 0
+			&& !!saved.indexState && saved.indexState === indexState
+			&& Number.isFinite(saved.minSimilarity) && Math.abs(saved.minSimilarity - minSim) < 1e-6;
 	},
 
 	/**
